@@ -1,0 +1,42 @@
+library(cslsdata)
+library(ggplot2)
+
+lake <- "Pleasant"
+ltmp_HOBO <- cslsdata::ltmp_HOBO[[lake]]
+ltmp_field <- cslsdata::ltmp_field[[lake]]
+lst_HOBO <- cslsdata::lst_HOBO[[lake]]
+lst_field <- cslsdata::lst_field[[lake]]
+
+lst$dT <- NA
+for (i in 2:nrow(lst_HOBO)) {
+  lst$dT[i] <- abs(lst$ltmp[i] - lst$ltmp[i-1])
+}
+
+
+# Lake Temperature Profile
+  ggplot() +
+    geom_line(data = ltmp_HOBO,
+              aes(x = date, y = ltmp, color = elev_m)) +
+    theme_bw()
+
+# LST
+ggplot() +
+  geom_line(data = lst_HOBO,
+            aes(x = date, y = ltmp)) +
+  geom_line(data = lst_HOBO,
+            aes(x = date, y = abs(dT))) +
+  geom_point(data = lst_field,
+             aes(x = date, y = ltmp),
+             color = "red") +
+  theme_bw()
+
+ggplot() +
+  geom_line(data = ltmp_field,
+            aes(x = date, y = ltmp, color = elev_m)) +
+  theme_bw()
+
+
+
+
+
+  

@@ -1,0 +1,27 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1572532933539.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "93501662",
+    "id" : "7305837C",
+    "lastKnownWriteTime" : 1573070393,
+    "last_content_update" : 1573070393852,
+    "path" : "Z:/WQWT_PROJECTS/WY_MS_Monitoring/2018 Summer Field Crew/Central Sands Lake Study/Analysis_2019/H2Ochem/vignettes/csls_water_chem_budget.Rmd",
+    "project_path" : "vignettes/csls_water_chem_budget.Rmd",
+    "properties" : {
+        "cursorPosition" : "51,36",
+        "last_setup_crc32" : "",
+        "scrollLine" : "0",
+        "tempName" : "Untitled2"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

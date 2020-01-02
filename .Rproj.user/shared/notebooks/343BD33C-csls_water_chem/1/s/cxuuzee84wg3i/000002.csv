@@ -1,0 +1,4 @@
+"0","parameter     <-""CHLORIDE"""
+"0","plotting_name <- ""Chloride"""
+"0",""
+"0","plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)"

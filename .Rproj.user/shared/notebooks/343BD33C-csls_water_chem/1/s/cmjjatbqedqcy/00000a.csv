@@ -1,0 +1,4 @@
+"0","parameter     <-""ALKALINITY TOTAL CACO3"""
+"0","plotting_name <- ""Alkalinity Total CaCO3"""
+"0",""
+"0","plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)"

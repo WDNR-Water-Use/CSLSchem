@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1573077431983.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3119633777",
+    "id" : "D4C2E3D2",
+    "lastKnownWriteTime" : 1573077473,
+    "last_content_update" : 1573077474180,
+    "path" : "Z:/WQWT_PROJECTS/WY_MS_Monitoring/2018 Summer Field Crew/Central Sands Lake Study/Analysis_2019/H2Ochem/data-raw/define_param_names.R",
+    "project_path" : "data-raw/define_param_names.R",
+    "properties" : {
+        "cursorPosition" : "45,58",
+        "scrollLine" : "0",
+        "tempName" : "Untitled2"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

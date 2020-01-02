@@ -1,0 +1,64 @@
+---
+title: "CSLS Water Chem Budgets"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Put the title of your vignette here}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+library(H2Ochem)
+library(isoH2Obudget)
+library(lubridate)
+library(reshape2)
+library(dplyr)
+library(ggplot2)
+
+text_size <- 12
+
+```
+
+## Incoming Mass
+
+```{r incoming, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=3.5, fig.align="center"}
+lake     <- "Pleasant"
+chem_bal <- get_chem_bal(lake)
+plot_inputs(chem_bal, lake, text_size = text_size)
+
+lake     <- "Long"
+chem_bal <- get_chem_bal(lake)
+plot_inputs(chem_bal, lake, text_size = text_size)
+
+lake     <- "Plainfield"
+chem_bal <- get_chem_bal(lake)
+plot_inputs(chem_bal, lake, text_size = text_size)
+```
+
+## Conservative?
+
+```{r conservative, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+chem_samples <- get_chem_samples()
+plot_conservative(chem_samples, text_size = text_size)
+
+```
+
+
+## All Mass
+
+```{r chem, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+lake     <- "Pleasant"
+chem_bal <- get_chem_bal(lake)
+plot_chem_bal(chem_bal, lake, text_size = text_size)
+
+lake     <- "Long"
+chem_bal <- get_chem_bal(lake)
+plot_chem_bal(chem_bal, lake, text_size = text_size)
+
+lake     <- "Plainfield"
+chem_bal <- get_chem_bal(lake)
+plot_chem_bal(chem_bal, lake, text_size = text_size)
+```
