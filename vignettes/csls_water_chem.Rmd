@@ -11,19 +11,19 @@ vignette: >
 
 ```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
 library(knitr)
-library(H2Ochem)
+library(CSLSchem)
 library(dplyr)
 library(stringr)
 library(lubridate)
 library(reshape2)
 
-text_size <- 12
+text_size    <- 12
+lakes        <- c("Pleasant", "Long", "Plainfield")
+SWIMS        <- classify_SWIMS_results(lakes)
 
-plot_bulk_fcn <- function(parameter, plotting_name, text_size, static_gw = TRUE) {
-  SWIMS_parameter <- filter_parameter(parameter = parameter, 
-                                      plotting_name = plotting_name,
-                                      static_gw = static_gw)
-  plot_obj <- plot_bulk(SWIMS_parameter, text_size)
+find_and_plot <- function(parameter, plotting_name, text_size) {
+  SWIMS_parameter <- filter_parameter(parameter, plotting_name)
+  plot_obj        <- plot_overall(SWIMS_parameter, text_size)
   return(plot_obj)
 }
 
@@ -36,166 +36,19 @@ plot_timeseries_fcn <- function(parameter, plotting_name, text_size,
   return(plot_obj)
 }
 
-# find_SWIMS_wells <- function(lakes = c("Pleasant", "Long", "Plainfield")){
-#   gw_sites <- NULL
-#   for (lake in lakes){
-#     dictionary  <- cslsdata::dictionary[[lake]]
-#     SWIMS_gw    <- get_SWIMS_gw(lake)
-#     SWIMS_gw$start_date_time <- floor_date(SWIMS_gw$start_date_time, unit = "week")
-#     SWIMS_gw           <- unique(SWIMS_gw) %>% na.omit
-#     gw_types           <- dictionary %>%
-#                           filter(.data$obs_type == "GW",
-#                                  .data$static_iso_class != "invalid") %>%
-#                           select(.data$site_id, .data$static_iso_class)
-#     SWIMS_gw           <- merge(SWIMS_gw, gw_types)
-#     SWIMS_gw$site_type <- recode(SWIMS_gw$static_iso_class,
-#                                  "upgradient" = "Upgradient Wells",
-#                                  "downgradient" = "Downgradient Wells",
-#                                  "invalid" = "Invalid")
-#     SWIMS_gw <- SWIMS_gw %>%
-#                 group_by(.data$start_date_time, .data$site_type) %>%
-#                 mutate(site_ids = str_c(.data$site_id, collapse = ", ")) %>%
-#                 select(.data$start_date_time,
-#                        .data$site_type, 
-#                        .data$site_ids) %>%
-#                 unique()
-#     SWIMS_gw <- dcast(SWIMS_gw, start_date_time ~ site_type, value.var = "site_ids")
-#     SWIMS_gw$Lake <- lake
-#     colnames(SWIMS_gw)[1] <- "Week of"
-#     gw_sites <- bind_rows(gw_sites, SWIMS_gw)
-#   }
-#   
-#   gw_sites[is.na(gw_sites)] <- "--"
-#   
-#   gw_sites <- select(gw_sites, one_of(c('Lake', 'Week of', 'Upgradient Wells', 
-#                                         'Downgradient Wells', 
-#                                         'Typically Downgradient',
-#                                         'Inconsistent', 'Invalid')))                          
-#   return(gw_sites)
-# }
-
-get_water_level_diff <- function(lakes = c("Pleasant", "Long", "Plainfield")){
-  water_level_diff <- NULL
-  for (lake in lakes){
-    lake_levels <- cslsdata::lake_levels[[lake]]
-    gw_levels   <- cslsdata::gw_levels[[lake]]
-    dictionary  <- cslsdata::dictionary[[lake]]
-    SWIMS       <- cslsdata::SWIMS[[lake]]
-    SWIMS_ids   <- unique(SWIMS$station_id)
-    gw_sites    <- dictionary %>%
-                   filter(.data$obs_type == "GW",
-                          .data$SWIMS_station_id %in% SWIMS_ids)
-
-        for (i in 1:nrow(gw_levels)) {
-      today <- gw_levels$date[i]
-      gw    <- gw_levels$level_m[i]
-      lk    <- lake_levels$level_m[lake_levels$date == today]
-      if (length(lk) > 0) {
-        gw_levels$diff_m[i] <- gw - lk
-      } else {
-        gw_levels$diff_m[i] <- NA
-      }
-    }
-    gw_levels        <- gw_levels %>%
-                        filter(gw_levels$site_id %in% gw_sites$site_id)
-    water_level_diff <- rbind(water_level_diff, gw_levels)
-  }
-  
-  return(water_level_diff)
-}
-
-get_SWIMS_gw <- function(lakes = c("Pleasant", "Long", "Plainfield")){
-  SWIMS_gw <- NULL
-  for (lake in lakes){
-    SWIMS <- cslsdata::SWIMS[[lake]]
-    dictionary <- cslsdata::dictionary[[lake]]
-    
-    gw_sites <- dictionary %>%
-                filter(.data$obs_type == "GW") %>%
-                select(.data$SWIMS_station_id,
-                       .data$site_id)
-    SWIMS    <- SWIMS %>%
-                filter(SWIMS$station_id %in% gw_sites$SWIMS_station_id) %>%
-                mutate(SWIMS_station_id = .data$station_id) %>%
-                select(.data$start_date_time,
-                       .data$SWIMS_station_id)
-    SWIMS    <- merge(SWIMS, gw_sites)
-    SWIMS_gw <- rbind(SWIMS_gw, SWIMS)
-  }
-  return(SWIMS_gw)
-}
-
 ```
 
 ## Overview
 
-### Discussion Items
-
-Things to discuss with Katie on Thurs 10/31/19:
-
-* **GW Sampling Dates.** Only 2 GW chem sampling dates (Oct 2018 & Aug 2019) -
-correct?
-* **GW levels.** We do not have data yet for Aug (i.e., for 50% of our sampling
-dates). This is unfortunate. Follow up with Mike Parsons? Wait for meeting
-Tuesday? If stick with "static" definitions of well type, need to confirm how to
-treat funny wells in Oct & Aug.
-* **PSNT-11.** I've thrown this well out of the analysis (only collected in Oct 2018).
-* **SWIMS results.** Confirm which types of comments invalidate a sample.
-* **NADP vs. CSLS parameters.** Of the NADP paramters, I think we can match Ca,
-Mg, K, Na, Cl, and SO4, but not NH4, NO3, or Br.
-
-```{r schematic1, out.width = "50%", eval=TRUE, echo=FALSE, fig.align="center"}
-include_graphics(system.file("images", 
-                             "water_level_schematic.png", 
-                             package = "H2Ochem", 
-                             mustWork = TRUE))
-```
-
-### Pleasant
-These plots show the difference between daily lake levels and groundwater levels
-at each measurement site. The red lines mark groundwater chemistry sampling
-dates. I've thrown out PSNT-11 from the analysis.
-
-```{r psnt, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-lake <- "Pleasant"
-water_level_diff <- get_water_level_diff(lake)
-SWIMS_gw         <- get_SWIMS_gw(lake)
-plot_levels(water_level_diff, SWIMS_gw)
-```
-
-### Long
-
-These plots show the difference between daily lake levels and groundwater levels
-at each measurement site. The red lines mark groundwater chemistry sampling
-dates.
-
-```{r long, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-lake <- "Long"
-water_level_diff <- get_water_level_diff(lake)
-SWIMS_gw         <- get_SWIMS_gw(lake)
-plot_levels(water_level_diff, SWIMS_gw)
-```
-
-### Plainfield
-
-These plots show the difference between daily lake levels and groundwater levels
-at each measurement site. The red lines mark groundwater chemistry sampling
-dates.
-
-```{r pfl, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-lake <- "Plainfield"
-water_level_diff <- get_water_level_diff(lake)
-SWIMS_gw         <- get_SWIMS_gw(lake)
-plot_levels(water_level_diff, SWIMS_gw)
-```
 
 ## Alkalinity, Total CaCO3
 ```{r CACO3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
 parameter     <-"ALKALINITY TOTAL CACO3"
 plotting_name <- "Alkalinity Total CaCO3"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Aluminum, Total Recoverable
@@ -203,8 +56,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"ALUMINUM,TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Aluminum"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Calcium, Total Recoverable
@@ -212,8 +66,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"CALCIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Calcium"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Chloride
@@ -222,8 +77,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"CHLORIDE"
 plotting_name <- "Chloride"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Conductivity
@@ -232,8 +88,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"CONDUCTIVITY, UMHOS/CM @ 25C"
 plotting_name <- "Conductivity"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Hardness, Total Recoverable Calculation
@@ -242,8 +99,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"HARDNESS TOTAL RECOVERABLE CALCULATION"
 plotting_name <- "Total Recoverable Hardness"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Iron, Total Recoverable
@@ -252,8 +110,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"IRON TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Iron"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Magnesium, Total Recoverable
@@ -262,8 +121,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <- "MAGNESIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverabel Magnesium"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Manganese, Total Recoverable
@@ -272,8 +132,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"MANGANESE, TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Manganese"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Nitrogen, NH3-N Dissolved
@@ -282,8 +143,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"NITROGEN NH3-N DISS"
 plotting_name <- "Dissolved Ammonium as Nitrogen"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Nitrogen, NO3 + NO2 Dissolved (as N)
@@ -292,8 +154,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"NITROGEN NO3+NO2 DISS (AS N)"
 plotting_name <- "Dissolved Nitrate/Nitrite as Nitrogen"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## pH
@@ -302,8 +165,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"PH LAB"
 plotting_name <- "pH"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Phosphorus, Total
@@ -312,8 +176,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"PHOSPHORUS TOTAL"
 plotting_name <- "Total Phosphorus"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Potassium, Total Recoverable
@@ -322,8 +187,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"POTASSIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Potassium"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Silica, Dissolved (as SiO2)
@@ -332,8 +198,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"SILICA, DISSOLVED (MG/L AS SI02)"
 plotting_name <- "Dissolved Silica as SiO2"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Sodium, Total Recoverable
@@ -342,8 +209,9 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"SODIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Sodium"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Sulfate, Total
@@ -352,7 +220,8 @@ plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
 parameter     <-"SULFATE TOTAL"
 plotting_name <- "Total Sulfate"
 
-plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
-plot_timeseries_fcn(parameter, plotting_name, text_size, static_gw = FALSE)
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size)
+plot_timeseries(SWIMS_parameter, text_size)
 ```
 

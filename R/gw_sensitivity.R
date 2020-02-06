@@ -14,7 +14,6 @@
 #' @importFrom rlang .data
 #' @importFrom dplyr filter select mutate group_by summarise summarise_all recode
 #' @importFrom NISTunits NISTcubMeterTOliter
-#' @import cslsdata
 #'
 #' @export
 

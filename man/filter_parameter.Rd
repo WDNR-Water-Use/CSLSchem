@@ -4,11 +4,10 @@
 \alias{filter_parameter}
 \title{Filter SWIMS by parameter}
 \usage{
-filter_parameter(lakes = c("Pleasant", "Long", "Plainfield"), parameter,
-  plotting_name, static_gw = FALSE)
+filter_parameter(SWIMS, parameter, plotting_name)
 }
 \arguments{
-\item{lakes}{- lakes of interest, e.g., c("Pleasant", "Long", "Plainfield")}
+\item{SWIMS}{data frame with SWIMS information for lakes of interest}
 
 \item{parameter}{- parameter to subset by, must exactly match DNR description
 (e.g., "ALUMINUM,TOTAL RECOVERABLE")}
@@ -16,20 +15,12 @@ filter_parameter(lakes = c("Pleasant", "Long", "Plainfield"), parameter,
 \item{plotting_name}{- name of parameter to use for plotting, e.g., "Total
 Recoverable Alumninum". Units will be added in based
 on SWIMS field.}
-
-\item{static_gw}{- defaults to FALSE to use well levels and lake levels to
-determine upgradient vs. downgradient wells. If TRUE, uses
-static definition from dictionary.}
 }
 \value{
-parameter - a data frame with SWIMS data subset to only parameter of
-                    interest for each lake, with site type (upgradient,
-                    downgradient, or lake) and lake (Pleasant, Plainfield, or
-                    Long), noted.
+SWIMS_parameter, same data frame, with only the results for the
+        parameter of interest. Also includes the given plotting name ("name").
 }
 \description{
 Subsets SWIMS dataset for a CSLS lake to only measurements for a parameter of
-interest. Labels with lake, and defines measurements as lake, upgradient
-well, or downgradient well based on the previous month of groundwater and
-lake levels.
+interest.
 }

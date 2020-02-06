@@ -12,10 +12,6 @@ or "Long")}
 
 \item{SWIMS}{- data frame with SWIMS info}
 
-\item{static_gw}{- defaults to FALSE to use well levels and lake levels to
-determine upgradient vs. downgradient wells. If TRUE, uses
-static definition from dictionary.}
-
 \item{threshold}{- defaults to 0.01 (m) to indicate that the difference in
 lake levels and groundwater levels over the previous month
 should be greater than 1cm in order to classify a well as
