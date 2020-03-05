@@ -39,6 +39,9 @@ plot_timeseries <- function(df,
                       unique(df$name),
                       str_to_lower(unique(df$units)))
   df       <- df %>% arrange(.data$date)
+  path_df  <- df %>%
+              filter(.data$site_type %in% c("lake", "upgradient", "downgradient"))
+
   plot_obj <- ggplot(df,
                      aes(x = floor_date(.data$date, unit = "day"),
                          y = .data$result,
@@ -46,15 +49,15 @@ plot_timeseries <- function(df,
                          color = .data$site_type,
                          fill = .data$site_type,
                          shape = .data$site_type)) +
-              geom_hline(aes(yintercept = min(.data$loq),
+              geom_hline(aes(yintercept = min(.data$loq, na.rm = TRUE),
                              linetype = "LOQ"),
                          color = "grey40",
                          size = 1) +
-              geom_hline(aes(yintercept = min(.data$lod),
+              geom_hline(aes(yintercept = min(.data$lod, na.rm = TRUE),
                              linetype = "LOD"),
                          color = "grey40",
                          size = 1) +
-              geom_path(data = subset(df, site_type %in% c("lake", "upgradient", "downgradient"))) +
+              geom_path(data = path_df) +
               geom_point(size = 2.5) +
               # geom_smooth(data = subset(df, site_type == "lake"),
               #             method = "loess",

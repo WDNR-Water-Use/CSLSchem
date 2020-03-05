@@ -10,7 +10,6 @@
 #' @param site_types possible site types to plot
 #' @param site_labels how to display names of site types in legends
 #' @param site_colors colors to use for site types
-#' @param site_shapes shapes to use for site types
 #'
 #' @return plot_obj, the plot object created by ggplot.
 #'
@@ -46,11 +45,11 @@ plot_summary<- function(df,
                          group = .data$site_type,
                          color = .data$site_type,
                          fill = .data$site_type)) +
-              geom_hline(aes(yintercept = min(.data$loq),
+              geom_hline(aes(yintercept = min(.data$loq, na.rm = TRUE),
                              linetype = "LOQ"),
                          color = "grey40",
                          size = 1) +
-              geom_hline(aes(yintercept = min(.data$lod),
+              geom_hline(aes(yintercept = min(.data$lod, na.rm = TRUE),
                              linetype = "LOD"),
                          color = "grey40",
                          size = 1) +

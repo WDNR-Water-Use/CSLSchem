@@ -14,6 +14,8 @@ classify_SWIMS_results(
 \arguments{
 \item{lakes}{lakes of interest, e.g., c("Pleasant", "Long", "Plainfield")}
 
+\item{precip}{name of precip site, defaults to "Hancock".}
+
 \item{threshold}{minimum difference (m) between water levels in order to
 assess gradient, defaults to 0.01m (i.e., the precision of
 HOBO water level loggers)}
@@ -25,5 +27,7 @@ between groundwater and lake levels, defaults to 30 days.}
 SWIMS, a data frame with all columns included in the CSLSdata frame
 }
 \description{
-This function
+This function first classifies each well site by daily lake-gw gradients,
+then classifies SWIMS samples results by site and site type (lake, upgradient
+well, downgradient well, deep well, or precipitation)
 }

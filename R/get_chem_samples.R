@@ -5,7 +5,7 @@
 #' well, or downgradient well based on the previous month of groundwater and
 #' lake levels.
 #'
-#' @param lake - lakes of interest, e.g., c("Pleasant", "Long", "Plainfield")
+#' @param lakes - lakes of interest, e.g., c("Pleasant", "Long", "Plainfield")
 #'
 #' @return chem_bal - a data frame with the date, parameter (e.g., Ca, Mg), result (concentration), flux (e.g., precip, GWin, lake), volume (m^3), and mass balance (mg/L*m^3.
 #'
@@ -18,14 +18,14 @@
 
 get_chem_samples<- function(lakes = c("Pleasant", "Long", "Plainfield")) {
   # Get matching param names
-  param_names <- H2Ochem::param_names
+  param_names <- CSLSchem::param_names
   param_names <- param_names %>%
                  filter(.data$NADP_param != "",
                         .data$CSLS_param != "",
                         .data$NADP_param != "ph")
 
   # Get precip
-  NADP_pcpn <- H2Ochem::NADP_pcpn
+  NADP_pcpn <- CSLSchem::NADP_pcpn
 
   # Precipitation
   this_pcpn <- NADP_pcpn %>%

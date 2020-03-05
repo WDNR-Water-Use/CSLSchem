@@ -19,14 +19,14 @@
 
 gw_sensitivity <- function(lake, GW_factor) {
   # Get matching param names
-  param_names <- H2Ochem::param_names
+  param_names <- CSLSchem::param_names
   param_names <- param_names %>%
                  filter(.data$NADP_param != "",
                         .data$CSLS_param != "",
                         .data$NADP_param != "ph")
 
   # Get water budget as volumes
-  h2o_bal    <- runall_csls_budget(lake, annual = TRUE)
+  h2o_bal    <- CSLSiso::runall_csls_budget(lake, annual = TRUE)
   P          <- h2o_bal$P_m3*h2o_bal$res_time
   E          <- h2o_bal$E_m3*h2o_bal$res_time
   GWin_init  <- h2o_bal$GWin_m3*h2o_bal$res_time
@@ -36,6 +36,9 @@ gw_sensitivity <- function(lake, GW_factor) {
   Vol_lk     <- h2o_bal$mean_vol_m3
 
   chem_bal <- get_chem_bal(lake)
+
+  GWin  <- GWin_new
+  GWout <- GWout_new
 
   lake_change <- NULL
   for (i in 1:nrow(param_names)) {
@@ -50,7 +53,7 @@ gw_sensitivity <- function(lake, GW_factor) {
 
     C_lake_new <- (Vol_lk*C_lake + P*C_pcpn + GWin*C_GWin - GWout*C_lake)/Vol_lk
 
-    this_loop <- data_frame(parameter = this_param,
+    this_loop <- data.frame(parameter = this_param,
                             units = "mg/L",
                             lake_init = C_lake,
                             lake_new = C_lake_new)

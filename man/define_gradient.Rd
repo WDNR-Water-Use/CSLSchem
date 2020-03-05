@@ -7,10 +7,10 @@
 define_gradient(values, threshold = 0.01)
 }
 \arguments{
-\item{value}{mean difference between groundwater and lake levels (positive =
+\item{values}{mean difference between groundwater and lake levels (positive =
 groundwater is higher)}
 
-\item{thrshold}{value to use to evaluate threshold, defaults to 0.01 (i.e.,
+\item{threshold}{value to use to evaluate threshold, defaults to 0.01 (i.e.,
 the precision of HOBO water level loggers)}
 }
 \value{

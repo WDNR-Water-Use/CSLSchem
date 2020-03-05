@@ -1,6 +1,8 @@
 #' Classify SWIMS results
 #'
-#' This function
+#' This function first classifies each well site by daily lake-gw gradients,
+#' then classifies SWIMS samples results by site and site type (lake, upgradient
+#' well, downgradient well, deep well, or precipitation)
 #'
 #' @param lakes lakes of interest, e.g., c("Pleasant", "Long", "Plainfield")
 #' @param precip name of precip site, defaults to "Hancock".

@@ -12,7 +12,7 @@
 #'                    lake levels and groundwater levels over the previous month
 #'                    should be greater than 1cm in order to classify a well as
 #'                    upgradient.
-#' @inheritParams filter_parameter
+#' @param static_gw switch defaults to FALSE to calculate groundwater gradients based on lake and groundwater levels. If TRUE, uses static definitions of gradient in the dictionary.
 #'
 #' @return SWIMS - same as inputs SWIMS data frame, but with a column for
 #'                 "site_type" which is either "lake", "upgradient" or
@@ -29,9 +29,9 @@
 #' @export
 
 define_lake_wells <- function(lake, SWIMS, static_gw = FALSE, threshold = 0.01){
-  dictionary  <- cslsdata::dictionary[[lake]]
-  lake_levels <- cslsdata::lake_levels[[lake]]
-  gw_levels   <- cslsdata::gw_levels[[lake]]
+  dictionary  <- CSLSdata::dictionary[[lake]]
+  lake_levels <- CSLSdata::lake_levels[[lake]]
+  gw_levels   <- CSLSdata::gw_levels[[lake]]
 
 
   # GW Sites

@@ -3,9 +3,9 @@
 #' Given a value and a threshold, define whether groundwater is upgradient,
 #' downgradient, or undetermined.
 #'
-#' @param value mean difference between groundwater and lake levels (positive =
+#' @param values mean difference between groundwater and lake levels (positive =
 #'              groundwater is higher)
-#' @param thrshold value to use to evaluate threshold, defaults to 0.01 (i.e.,
+#' @param threshold value to use to evaluate threshold, defaults to 0.01 (i.e.,
 #'                 the precision of HOBO water level loggers)
 #'
 #' @return gradient - a string noting gradient (upgradient, downgradient, or "")

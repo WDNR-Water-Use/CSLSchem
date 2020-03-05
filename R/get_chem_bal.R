@@ -13,22 +13,23 @@
 #' @importFrom rlang .data
 #' @importFrom dplyr filter select mutate group_by summarise summarise_all recode
 #' @importFrom NISTunits NISTcubMeterTOliter
+#' @importFrom reshape2 dcast
 #'
 #' @export
 
 get_chem_bal <- function(lake) {
   # Get matching param names
-  param_names <- H2Ochem::param_names
+  param_names <- CSLSchem::param_names
   param_names <- param_names %>%
                  filter(.data$NADP_param != "",
                         .data$CSLS_param != "",
                         .data$NADP_param != "ph")
 
   # Get precip
-  NADP_pcpn <- H2Ochem::NADP_pcpn
+  NADP_pcpn <- CSLSchem::NADP_pcpn
 
   # Get water budget as volumes
-  h2o_bal  <- runall_csls_budget(lake, annual = TRUE)
+  h2o_bal  <- CSLSiso::runall_csls_budget(lake, annual = TRUE)
   h2o_bal  <- h2o_bal %>%
               select(.data$date,
                      .data$P_m3,

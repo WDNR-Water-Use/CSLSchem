@@ -7,7 +7,7 @@
 get_chem_samples(lakes = c("Pleasant", "Long", "Plainfield"))
 }
 \arguments{
-\item{lake}{- lakes of interest, e.g., c("Pleasant", "Long", "Plainfield")}
+\item{lakes}{- lakes of interest, e.g., c("Pleasant", "Long", "Plainfield")}
 }
 \value{
 chem_bal - a data frame with the date, parameter (e.g., Ca, Mg), result (concentration), flux (e.g., precip, GWin, lake), volume (m^3), and mass balance (mg/L*m^3.

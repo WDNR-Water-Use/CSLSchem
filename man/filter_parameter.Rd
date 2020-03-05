@@ -4,7 +4,14 @@
 \alias{filter_parameter}
 \title{Filter SWIMS by parameter}
 \usage{
-filter_parameter(SWIMS, parameter, plotting_name)
+filter_parameter(
+  SWIMS,
+  parameter,
+  plotting_name,
+  no_blanks = TRUE,
+  no_dups = TRUE,
+  no_age = FALSE
+)
 }
 \arguments{
 \item{SWIMS}{data frame with SWIMS information for lakes of interest}
@@ -15,6 +22,13 @@ filter_parameter(SWIMS, parameter, plotting_name)
 \item{plotting_name}{- name of parameter to use for plotting, e.g., "Total
 Recoverable Alumninum". Units will be added in based
 on SWIMS field.}
+
+\item{no_blanks}{logical defaults to TRUE to exclude blank samples}
+
+\item{no_dups}{logical defaults to TRUE to exclude duplicate samples}
+
+\item{no_age}{logical defaults to FALSE to include samples that were analyzed
+past the holding date.}
 }
 \value{
 SWIMS_parameter, same data frame, with only the results for the

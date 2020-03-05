@@ -27,8 +27,6 @@ plot_summary(
 \item{site_labels}{how to display names of site types in legends}
 
 \item{site_colors}{colors to use for site types}
-
-\item{site_shapes}{shapes to use for site types}
 }
 \value{
 plot_obj, the plot object created by ggplot.

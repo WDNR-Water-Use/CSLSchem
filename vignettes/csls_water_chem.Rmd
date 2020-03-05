@@ -16,10 +16,11 @@ library(dplyr)
 library(stringr)
 library(lubridate)
 library(reshape2)
+library(extrafont)
 
 text_size    <- 12
 lakes        <- c("Pleasant", "Long", "Plainfield")
-SWIMS        <- classify_SWIMS_results(lakes)
+SWIMS        <- CSLSchem::SWIMS
 
 find_and_plot <- function(parameter, plotting_name, text_size) {
   SWIMS_parameter <- filter_parameter(parameter, plotting_name)
@@ -38,106 +39,246 @@ plot_timeseries_fcn <- function(parameter, plotting_name, text_size,
 
 ```
 
-## Overview
+# Overview {#top}
+The data used here includes data from both SWIMS and LDES. Duplicates between
+the two data sources as well as samples labeled as blanks or duplicates are
+removed. Overall notes:
 
+* Seems probable that Long Lake and Plainfield Lake sample labels or data entry
+at WSLH were swapped on July 16, 2019 (see calcium, magnesium, alkalinity,
+conductivity, total recoverable hardness).
 
-## Alkalinity, Total CaCO3
-```{r CACO3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-parameter     <-"ALKALINITY TOTAL CACO3"
-plotting_name <- "Alkalinity Total CaCO3"
-
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
-```
-
-## Aluminum, Total Recoverable
-```{r Al, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-parameter     <-"ALUMINUM,TOTAL RECOVERABLE"
-plotting_name <- "Total Recoverable Aluminum"
-
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
-```
 
 ## Calcium, Total Recoverable
+[Back to top](#top)
+
+Observations:
+
+* Calcium is fairly stable over time at lake and groundwater sites except for
+one wonky well (PFL-09).
+* Lakes are generally lower than groundwater.
+* Pleasant and Plainfield lakes are similar, Long lake is notably lower.
+* Upgradient and downgradient groundwater behave similarly at Long and
+Plainfield, downgradient groundwater is a little more similar to lake water at
+Pleasant.
+  
 ```{r Ca, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
 parameter     <-"CALCIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Calcium"
 
 SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
-```
-
-## Chloride
-
-```{r Cl, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-parameter     <-"CHLORIDE"
-plotting_name <- "Chloride"
-
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
-```
-
-## Conductivity
-
-```{r Conductivity, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-parameter     <-"CONDUCTIVITY, UMHOS/CM @ 25C"
-plotting_name <- "Conductivity"
-
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
-```
-
-## Hardness, Total Recoverable Calculation
-
-```{r hardness, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-parameter     <-"HARDNESS TOTAL RECOVERABLE CALCULATION"
-plotting_name <- "Total Recoverable Hardness"
-
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
-```
-
-## Iron, Total Recoverable
-
-```{r Fe, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-parameter     <-"IRON TOTAL RECOVERABLE"
-plotting_name <- "Total Recoverable Iron"
-
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
 ```
 
 ## Magnesium, Total Recoverable
+[Back to top](#top)
+
+Observations:
+
+* Magnesium is fairly stable over time at lake and groundwater sites except for
+one wonky well (PFL-09).
+* Lakes are generally lower than groundwater.
+* Pleasant and Plainfield lakes are similar, Long lake is notably lower.
+* Upgradient and downgradient groundwater behave similarly at Long and
+Plainfield, downgradient groundwater is a little more similar to lake water at
+Pleasant.
 
 ```{r Mg, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
 parameter     <- "MAGNESIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverabel Magnesium"
 
 SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+```
+
+## Alkalinity, Total CaCO3
+[Back to top](#top)
+
+Observations:
+
+* Alkalinity is fairly stable over time at lake and groundwater sites except for
+one wonky well (PFL-09).
+* Lakes are generally lower than groundwater.
+* Pleasant and Plainfield lakes are similar, Long lake is notably lower.
+* Upgradient and downgradient groundwater behave similarly at Long and
+Plainfield, downgradient groundwater is a little more similar to lake water at
+Pleasant.
+
+```{r CACO3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"ALKALINITY TOTAL CACO3"
+plotting_name <- "Alkalinity Total CaCO3"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+```
+
+
+## Hardness, Total Recoverable Calculation
+[Back to top](#top)
+
+Observations:
+
+* Hardness is fairly stable over time at lake and groundwater sites except for
+one wonky well (PFL-09).
+* Lakes are generally lower than groundwater.
+* Pleasant and Plainfield lakes are similar, Long lake is notably lower.
+* Upgradient and downgradient groundwater behave similarly at Long and
+Plainfield, downgradient groundwater is a little more similar to lake water at
+Pleasant.
+
+```{r hardness, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"HARDNESS TOTAL RECOVERABLE CALCULATION"
+plotting_name <- "Total Recoverable Hardness"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+```
+
+## Aluminum, Total Recoverable
+[Back to top](#top)
+
+Observations:
+
+* Aluminum is s variable within groundwater sites as it is among groundwater sites.
+* Lake levels are very low compared to groundwater levels (typically below
+detection).
+* At Pleasant Lake, downgradient wells show a downward trend in aluminum 
+  over time.
+* At Long Lake and Plainfield Lake, there is no discernable trend and there is 
+  as much variation within well samples as there is among well samples.
+
+```{r Al, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"ALUMINUM,TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverable Aluminum"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+```
+
+## Iron, Total Recoverable
+[Back to top](#top)
+
+Observations:
+
+* Iron is as variable within groundwater sites as it is among groundwater sites.
+* Groundwater levels are generally low (near or below the limit of quality) with
+the exception of one well at Pleasant (PSNT-05) and one well at Plainfield
+(PFL-09).
+* Iron was only measured at the lake surfaces one time (in Feb 2019) and was
+below detection at Pleasant, below the limit of quality at Plainfield, and less
+than 1 mg/L at Long.
+
+```{r Fe, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"IRON TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverable Iron"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
 ```
 
 ## Manganese, Total Recoverable
+[Back to top](#top)
+
+Observations:
+
+* Manganese is as variable within groundwater sites as it is among groundwater
+sites.
+* Groundwater levels are similar at all three lakes with the exception of one
+well at Pleasant (PSNT-05) and one well at Plainfield (PFL-09) which are notably
+higher.
+* While there are very few lake samples, they appear to be similar to
+groundwater concentrations.
 
 ```{r Mn, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
 parameter     <-"MANGANESE, TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Manganese"
 
 SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+```
+
+## Conductivity
+[Back to top](#top)
+
+Observations:
+
+* Conductivity is fairly stable over time at lake and groundwater sites.
+* Lakes are generally lower than groundwater
+* Conductivity is similar at Pleasant Lake and Plainfield Lake, but
+substantially lower at Long Lake.
+* Upgradient and downgradient groundwater behave similarly, though downgradient
+groundwater is a little closer to lake water at Pleasant than at the other
+lakes.
+
+
+```{r Conductivity, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"CONDUCTIVITY, UMHOS/CM @ 25C"
+plotting_name <- "Conductivity"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+```
+
+## Chloride
+[Back to top](#top)
+
+Observations:
+
+* Lakes are less variable than groundwater
+* Groundwater is about as variable within as site as across sites
+* Lake values and groundwater values are similar at Pleasant and Long, but
+Plainfield lake values are notably higher than Plainfield groundwater.
+* Lake and gorundwater values are lowest at Long - nearly all samples are below
+the limit of quality.
+* Do we have a measure of road density or impervious surfaces around each lake
+(say a 200m buffer)?
+* I think all concentrations are well below levels of concern (that would be 200
+mg/l, correct)?
+
+```{r Cl, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"CHLORIDE"
+plotting_name <- "Chloride"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+```
+
+## Sodium, Total Recoverable
+[Back to top](#top)
+
+Observations:
+
+* Sodium is fairly stable over time at lake and groundwater sites
+* Lake values are generally lower than groundwater values at Pleasant and Long,
+but generally higher than groundwater at Plainfield.
+* Groundwater and especially lake values are lowest at Long Lake.
+
+```{r Na, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"SODIUM TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverable Sodium"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
 ```
 
 ## Nitrogen, NH3-N Dissolved
+[Back to top](#top)
+
+Observations:
+
+* NH3-N is behaves similarly at all three lakes
+* NH3-N is almost non-existant in groundwater (at/below the limit of quality in
+all but two samples) and still very low in lakes
 
 ```{r NH3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
 parameter     <-"NITROGEN NH3-N DISS"
@@ -149,6 +290,14 @@ plot_timeseries(SWIMS_parameter, text_size)
 ```
 
 ## Nitrogen, NO3 + NO2 Dissolved (as N)
+[Back to top](#top)
+
+Observations:
+
+* All sites have at least one well with appreciable NO3/NO2, but most
+groundwater and lake samples are near the limit of quality.
+* Pleasant Lake has slightly higher (i.e., usually measureable) lake values
+than Long and Plainfield, which are all non-detect.
 
 ```{r NO3NO2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
 parameter     <-"NITROGEN NO3+NO2 DISS (AS N)"
@@ -159,40 +308,55 @@ plot_summary(SWIMS_parameter, text_size)
 plot_timeseries(SWIMS_parameter, text_size)
 ```
 
-## pH
-
-```{r pH, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-parameter     <-"PH LAB"
-plotting_name <- "pH"
-
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
-```
-
 ## Phosphorus, Total
+[Back to top](#top)
+
+Observations:
+
+* Phoshorous is anomalously high at one Pleasant well (PSNT-05) and one
+Plainfield well (PFL-09).
+* Otherwise, groundwater levels are typically similar to or slightly higher than
+lake levels
+* Lake values are often below the limit of quality, particularly at Pleasant
+Lake.
 
 ```{r P, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
 parameter     <-"PHOSPHORUS TOTAL"
 plotting_name <- "Total Phosphorus"
 
 SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
 ```
 
 ## Potassium, Total Recoverable
+[Back to top](#top)
+
+Observations:
+
+* Lake values are typically lower than groundwater levels at Pleasant, but
+similar to groundwater levels at Long and Plainfield
+* Plainfield has several wells with notably higher levels, including PFL-09.
 
 ```{r K, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
 parameter     <-"POTASSIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Potassium"
 
 SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
+plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
+plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
 ```
 
 ## Silica, Dissolved (as SiO2)
+[Back to top](#top)
+
+Observations:
+
+* Lake values may have a seasonal pattern
+* Lake vlaues are lower than groundwater values
+* Downgradient values are lower than upgradinet values at Pleasant Lake, but all
+groundwater is similar at Long and Plainfield.
+* Levels are less variable in grundwater than in the lake
 
 ```{r SiO2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
 parameter     <-"SILICA, DISSOLVED (MG/L AS SI02)"
@@ -203,18 +367,32 @@ plot_summary(SWIMS_parameter, text_size)
 plot_timeseries(SWIMS_parameter, text_size)
 ```
 
-## Sodium, Total Recoverable
+## pH
+[Back to top](#top)
 
-```{r Na, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-parameter     <-"SODIUM TOTAL RECOVERABLE"
-plotting_name <- "Total Recoverable Sodium"
+Observations:
+
+* Lakes and groundwater are about as variable among sites as within sites
+* Lake pH is higher than groundwater pH at Pleasant and Plainfield, but
+lower at Long.
+* There is an anomolously low value for LL-05 from the last sample date. 
+
+```{r pH, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"PH LAB"
+plotting_name <- "pH"
 
 SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
 plot_summary(SWIMS_parameter, text_size)
 plot_timeseries(SWIMS_parameter, text_size)
 ```
 
+
 ## Sulfate, Total
+[Back to top](#top)
+
+Observations:
+
+* Sulfate is below the limit of quality for nearly all samples
 
 ```{r So4, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
 parameter     <-"SULFATE TOTAL"

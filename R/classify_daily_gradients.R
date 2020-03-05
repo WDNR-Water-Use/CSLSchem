@@ -22,7 +22,7 @@
 #'
 #' @importFrom magrittr %>%
 #' @importFrom rlang .data
-#' @importFrom dplyr filter select mutate
+#' @importFrom dplyr filter select mutate group_by ungroup
 #'
 #' @export
 
@@ -39,8 +39,9 @@ classify_daily_gradients <- function(lakes = c("Pleasant", "Long", "Plainfield")
     these_levels   <- water_levels %>%
                       filter(.data$date %within% this_window)
     median_diffs   <- these_levels %>%
-                      group_by(site_id) %>%
-                      summarise(median_diff = median(diff_m, na.rm = TRUE)) %>%
+                      group_by(.data$site_id) %>%
+                      summarise(median_diff = median(.data$diff_m,
+                                                     na.rm = TRUE)) %>%
                       ungroup()
     gradients      <- median_diffs %>%
                       mutate(date = this_date,

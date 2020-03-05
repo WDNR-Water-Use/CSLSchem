@@ -12,6 +12,8 @@ or "Long")}
 
 \item{SWIMS}{- data frame with SWIMS info}
 
+\item{static_gw}{switch defaults to FALSE to calculate groundwater gradients based on lake and groundwater levels. If TRUE, uses static definitions of gradient in the dictionary.}
+
 \item{threshold}{- defaults to 0.01 (m) to indicate that the difference in
 lake levels and groundwater levels over the previous month
 should be greater than 1cm in order to classify a well as
