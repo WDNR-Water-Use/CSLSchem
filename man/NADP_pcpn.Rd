@@ -4,7 +4,8 @@
 \name{NADP_pcpn}
 \alias{NADP_pcpn}
 \title{NADP precipitation data}
-\format{A data frame:
+\format{
+A data frame:
 \describe{
   \item{start_date}{start date of precipitation sample}
   \item{end_date}{end date of precipitation sample}
@@ -13,7 +14,8 @@
                    Ca (mg/L), Mg (mg/L), K (mg/L), Na (mg/L), NH4 (mg/L),
                    NO3 (mg/L), Cl (mg/L), SO4 (mg/L), Br (mg/L), subppt (mm)}
   \item{result}{value of measurement}
-}}
+}
+}
 \usage{
 data(NADP_pcpn)
 }

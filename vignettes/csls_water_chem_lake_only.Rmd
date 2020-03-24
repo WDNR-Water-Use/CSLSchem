@@ -1,0 +1,239 @@
+---
+title: "CSLS Water Chem Visualization: Lakes Only"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{chem_lakes_only}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+library(CSLSchem)
+library(dplyr)
+library(stringr)
+library(lubridate)
+library(reshape2)
+library(extrafont)
+
+text_size    <- 12
+lakes        <- c("Pleasant", "Long", "Plainfield")
+SWIMS        <- CSLSchem::SWIMS
+SWIMS        <- SWIMS %>%
+                filter(.data$site_type == "lake")
+```
+
+# Overview {#top}
+The data used here includes data from both SWIMS and LDES. Duplicates between
+the two data sources as well as samples labeled as blanks or duplicates are
+removed.
+
+## Calcium, Total Recoverable
+[Back to top](#top)
+
+```{r Ca, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"CALCIUM TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverable Calcium"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Magnesium, Total Recoverable
+[Back to top](#top)
+
+```{r Mg, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <- "MAGNESIUM TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverabel Magnesium"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Alkalinity, Total CaCO3
+[Back to top](#top)
+
+```{r CACO3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"ALKALINITY TOTAL CACO3"
+plotting_name <- "Alkalinity Total CaCO3"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+
+## Hardness, Total Recoverable Calculation
+[Back to top](#top)
+
+```{r hardness, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"HARDNESS TOTAL RECOVERABLE CALCULATION"
+plotting_name <- "Total Recoverable Hardness"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Aluminum, Total Recoverable
+[Back to top](#top)
+
+```{r Al, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"ALUMINUM,TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverable Aluminum"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Iron, Total Recoverable
+[Back to top](#top)
+
+
+```{r Fe, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"IRON TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverable Iron"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Manganese, Total Recoverable
+[Back to top](#top)
+
+```{r Mn, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"MANGANESE, TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverable Manganese"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Conductivity
+[Back to top](#top)
+
+```{r Conductivity, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"CONDUCTIVITY, UMHOS/CM @ 25C"
+plotting_name <- "Conductivity"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Chloride
+[Back to top](#top)
+
+```{r Cl, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"CHLORIDE"
+plotting_name <- "Chloride"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Sodium, Total Recoverable
+[Back to top](#top)
+
+```{r Na, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"SODIUM TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverable Sodium"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Nitrogen, NH3-N Dissolved
+[Back to top](#top)
+
+```{r NH3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"NITROGEN NH3-N DISS"
+plotting_name <- "Dissolved Ammonium as Nitrogen"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Nitrogen, NO3 + NO2 Dissolved (as N)
+[Back to top](#top)
+
+```{r NO3NO2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"NITROGEN NO3+NO2 DISS (AS N)"
+plotting_name <- "Dissolved Nitrate/Nitrite as Nitrogen"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Phosphorus, Total
+[Back to top](#top)
+
+```{r P, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"PHOSPHORUS TOTAL"
+plotting_name <- "Total Phosphorus"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Potassium, Total Recoverable
+[Back to top](#top)
+
+```{r K, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"POTASSIUM TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverable Potassium"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## Silica, Dissolved (as SiO2)
+[Back to top](#top)
+
+```{r SiO2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"SILICA, DISSOLVED (MG/L AS SI02)"
+plotting_name <- "Dissolved Silica as SiO2"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+## pH
+[Back to top](#top)
+
+```{r pH, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"PH LAB"
+plotting_name <- "pH"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+
+
+## Sulfate, Total
+[Back to top](#top)
+
+```{r So4, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"SULFATE TOTAL"
+plotting_name <- "Total Sulfate"
+
+SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
+plot_summary_by_year(SWIMS_parameter, text_size)
+plot_timeseries_by_year(SWIMS_parameter, text_size)
+```
+

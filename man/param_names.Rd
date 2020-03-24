@@ -4,12 +4,14 @@
 \name{param_names}
 \alias{param_names}
 \title{Parameter Names}
-\format{A data frame:
+\format{
+A data frame:
 \describe{
   \item{NADP_param}{name of NADP precipitation parameters}
   \item{CSLS_param}{name of CSLS lake and well parameters from SWIMS}
   \item{CSLS_names}{name of CSLS parameters to use for plotting labels}
-}}
+}
+}
 \usage{
 data(param_names)
 }

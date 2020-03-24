@@ -6,7 +6,12 @@
 #' lake levels.
 #'
 #' @param lake - lakes of interest, e.g., c("Pleasant", "Long", "Plainfield")
-#'
+#' @param start_date start date of analysis. Defaults to
+#'                   as_datetime(mdy("10-01-2018")) but can be NULL to include
+#'                   entier water budget dataset.
+#' @param end_date end date of analysis. Defaults to
+#'                 as_datetime(mdy("09-30-2019")) but can be NULL to include
+#'                 entier water budget dataset.
 #' @return chem_bal - a data frame with the date, parameter (e.g., Ca, Mg), result (concentration), flux (e.g., precip, GWin, lake), volume (m^3), and mass balance (mg/L*m^3.
 #'
 #' @importFrom magrittr %>%
@@ -14,10 +19,13 @@
 #' @importFrom dplyr filter select mutate group_by summarise summarise_all recode
 #' @importFrom NISTunits NISTcubMeterTOliter
 #' @importFrom reshape2 dcast
+#' @importFrom lubridate as_datetime mdy
 #'
 #' @export
 
-get_chem_bal <- function(lake) {
+calculate_chem_bal <- function(lake,
+                               start_date = as_datetime(mdy("10-01-2018")),
+                               end_date = as_datetime(mdy("09-30-2019"))) {
   # Get matching param names
   param_names <- CSLSchem::param_names
   param_names <- param_names %>%
@@ -28,8 +36,16 @@ get_chem_bal <- function(lake) {
   # Get precip
   NADP_pcpn <- CSLSchem::NADP_pcpn
 
+  # Get SWIMS
+  SWIMS <- CSLSchem::SWIMS
+  SWIMS <- SWIMS %>%
+           filter(.data$lake == !!lake)
+
   # Get water budget as volumes
-  h2o_bal  <- CSLSiso::runall_csls_budget(lake, annual = TRUE)
+  h2o_bal  <- CSLSiso::runall_csls_budget(lake,
+                                          start_date = start_date,
+                                          end_date = end_date,
+                                          annual = TRUE)
   h2o_bal  <- h2o_bal %>%
               select(.data$date,
                      .data$P_m3,
@@ -57,13 +73,12 @@ get_chem_bal <- function(lake) {
   # Lake
   all_CSLS <- NULL
   for (p in 1:length(param_names$CSLS_param)) {
-    this_CSLS <- filter_parameter(lake,
+    this_CSLS <- filter_parameter(SWIMS = SWIMS,
                                   parameter = param_names$CSLS_param[p],
                                   plotting_name = param_names$CSLS_names[p])
     this_CSLS$site_type <- recode(this_CSLS$site_type,
-                                  "Upgradient" = "GWin",
-                                  "Downgradient" = "GWout",
-                                  "Lake Surface" = "lake")
+                                  "upgradient" = "GWin",
+                                  "downgradient" = "GWout")
     this_CSLS <- this_CSLS %>%
                  filter(.data$date %within% h2o_bal$date[1],
                         .data$site_type %in% c("GWin", "lake")) %>%

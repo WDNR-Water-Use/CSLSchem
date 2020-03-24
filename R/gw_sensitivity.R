@@ -35,7 +35,7 @@ gw_sensitivity <- function(lake, GW_factor) {
   GWout_new  <- GWout_init*GW_factor
   Vol_lk     <- h2o_bal$mean_vol_m3
 
-  chem_bal <- get_chem_bal(lake)
+  chem_bal <- calculate_chem_bal(lake)
 
   GWin  <- GWin_new
   GWout <- GWout_new

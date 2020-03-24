@@ -35,12 +35,15 @@ filter_parameter <- function(SWIMS, parameter, plotting_name,
     df <- df %>%
           filter(.data$flag != "BLANK")
   }
-  if (no_dups)
+  if (no_dups) {
     df <- df %>%
           filter(.data$flag != "DUPLICATE")
+  }
 
   # Note hypolimnion
-  df$site_type[df$site_type == "lake" & (df$depth1_m > 5 | df$depth2_m > 5)] <- "lake_bottom"
+  if (!is.null(df$site_type[df$site_type == "lake" & (df$depth1_m > 5 | df$depth2_m > 5)])) {
+    df$site_type[df$site_type == "lake" & (df$depth1_m > 5 | df$depth2_m > 5)] <- "lake_bottom"
+  }
 
   return(df)
 }

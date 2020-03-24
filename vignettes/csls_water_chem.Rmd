@@ -42,12 +42,7 @@ plot_timeseries_fcn <- function(parameter, plotting_name, text_size,
 # Overview {#top}
 The data used here includes data from both SWIMS and LDES. Duplicates between
 the two data sources as well as samples labeled as blanks or duplicates are
-removed. Overall notes:
-
-* Seems probable that Long Lake and Plainfield Lake sample labels or data entry
-at WSLH were swapped on July 16, 2019 (see calcium, magnesium, alkalinity,
-conductivity, total recoverable hardness).
-
+removed.
 
 ## Calcium, Total Recoverable
 [Back to top](#top)

@@ -4,7 +4,8 @@
 \name{SWIMS}
 \alias{SWIMS}
 \title{SWIMS sample results}
-\format{A data frame:
+\format{
+A data frame:
 \describe{
   \item{lake}{Hancock, Pleasant, Long, or Plainfield}
   \item{site_type}{lake, upgradient, downgradient, deep, or precipitation}
@@ -23,7 +24,8 @@
   \item{flag}{flag for sample quality, inlcudes "AGE", "BLANK", "COMMENT",
               "DUPLICATE", "LOD", "LOQ", or "NONE"}
   \item{flag_reason}{detailed explanation for flag, if not "NONE"}
-}}
+}
+}
 \usage{
 data(SWIMS)
 }
