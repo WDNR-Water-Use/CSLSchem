@@ -25,22 +25,19 @@
 plot_timeseries <- function(df,
                             yaxis_type = "number",
                             text_size = 12,
-                            site_types = c("precipitation",
-                                           "upgradient", "downgradient", "deep",
+                            site_types = c("upgradient",
+                                           "nogradient",
+                                           "downgradient",
                                            "lake", "lake_bottom"),
-                            site_labels = c("Precip.",
-                                            "Upgr.", "Downgr.", "Deep",
+                            site_labels = c("Upgr.", "Nogr.", "Downgr.",
                                             "Lake Surf", "Lake Bot."),
-                            site_colors = c("#1F78B4",
-                                            "#33A02C", "#B2DF8A", "#6A3D9A",
+                            site_colors = c("#33A02C", "#B15928", "#B2DF8A",
                                             "#FB9A99", "#E31A1C"),
-                            site_shapes = c(22, 21, 21, 21, 24, 24)){
+                            site_shapes = c(21, 21, 21, 24, 24)){
   ylabel   <- sprintf("%s (%s)",
                       unique(df$name),
                       str_to_lower(unique(df$units)))
   df       <- df %>% arrange(.data$date)
-  path_df  <- df %>%
-              filter(.data$site_type %in% c("lake", "upgradient", "downgradient"))
 
   plot_obj <- ggplot(df,
                      aes(x = floor_date(.data$date, unit = "day"),
@@ -57,11 +54,8 @@ plot_timeseries <- function(df,
                              linetype = "LOD"),
                          color = "grey40",
                          size = 1) +
-              geom_path(data = path_df) +
+              geom_path() +
               geom_point(size = 2.5) +
-              # geom_smooth(data = subset(df, site_type == "lake"),
-              #             method = "loess",
-              #             se = FALSE) +
               facet_grid(~lake) +
               labs(x = "", y = ylabel, color = "Site") +
               scale_x_datetime(breaks = "6 months",
@@ -87,8 +81,6 @@ plot_timeseries <- function(df,
               theme_bw() +
               theme(text = element_text(family = "Segoe UI Semilight",
                                         size = text_size),
-                    panel.grid.major = element_blank(),
-                    panel.grid.minor = element_blank(),
                     legend.position = "top")
   if (yaxis_type == "log") {
     plot_obj <- plot_obj + scale_y_log10()

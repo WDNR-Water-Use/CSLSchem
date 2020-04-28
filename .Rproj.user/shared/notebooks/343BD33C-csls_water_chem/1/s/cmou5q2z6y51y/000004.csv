@@ -1,4 +1,0 @@
-"0","include_graphics(system.file(""images"", "
-"0","                             ""water_level_schematic.png"", "
-"0","                             package = ""H2Ochem"", "
-"0","                             mustWork = TRUE))"

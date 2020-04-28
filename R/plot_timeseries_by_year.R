@@ -8,10 +8,6 @@
 #' @param yaxis_type defaults to "number" to use continuous y axis. Can also be
 #'                   "log" for semi-log plot.
 #' @param text_size size of text on plots, defaults to 12pt.
-#' @param site_types possible site types to plot
-#' @param site_labels how to display names of site types in legends
-#' @param site_colors colors to use for site types
-#' @param site_shapes shapes to use for site types
 #'
 #' @return plot_obj, the plot object created by ggplot.
 #'
@@ -36,7 +32,7 @@ plot_timeseries_by_year <- function(df,
               filter(.data$site_type %in% c("lake", "upgradient", "downgradient"))
 
   plot_obj <- ggplot(df,
-                     aes(x = .data$date, unit = "day",
+                     aes(x = as.Date(.data$date, origin = as.Date("2018-01-01")),
                          y = .data$result,
                          group = .data$year,
                          color = .data$year,
@@ -52,13 +48,10 @@ plot_timeseries_by_year <- function(df,
                          size = 1) +
               geom_path(data = path_df) +
               geom_point(size = 2.5) +
-              # geom_smooth(data = subset(df, site_type == "lake"),
-              #             method = "loess",
-              #             se = FALSE) +
               facet_grid(~lake) +
               labs(x = "", y = ylabel, color = "Site") +
-              # scale_x_datetime(breaks = "2 months",
-              #                  date_labels = "%b %y") +
+              scale_x_date(date_breaks = "2 months",
+                           date_labels = "%b") +
               scale_linetype_manual(name = "",
                                     breaks = c("LOQ", "LOD"),
                                     values = c("longdash", "dotted")) +
@@ -70,8 +63,6 @@ plot_timeseries_by_year <- function(df,
               theme_bw() +
               theme(text = element_text(family = "Segoe UI Semilight",
                                         size = text_size),
-                    panel.grid.major = element_blank(),
-                    panel.grid.minor = element_blank(),
                     legend.position = "top")
   if (yaxis_type == "log") {
     plot_obj <- plot_obj + scale_y_log10()

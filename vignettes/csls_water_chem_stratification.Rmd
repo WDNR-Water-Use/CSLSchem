@@ -9,7 +9,7 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+```{r setup, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
 library(knitr)
 library(CSLSchem)
 library(dplyr)
@@ -18,34 +18,58 @@ library(extrafont)
 
 text_size    <- 12
 lakes        <- c("Pleasant", "Long", "Plainfield")
-SWIMS        <- CSLSchem::SWIMS
+water_chem   <- CSLSdata::water_chem
 
-plot_ltmp_HOBO <- function(lake) {
-  HOBO     <- CSLSdata::ltmp_HOBO[[lake]]
-  max_HOBO <- max(HOBO$date)
-  min_HOBO <- min(HOBO$date)
-  levels   <- CSLSdata::lake_levels[[lake]]
-  levels   <- levels %>%
-              filter(date > min_HOBO,
-                     date < max_HOBO)
+plot_HOBO <- function(lake, water_chem) {
+  ltmp     <- filter_parameter(water_chem, "TEMPERATURE HOBO") %>%
+              filter(.data$lake == !!lake,
+                     !is.na(.data$result)) %>%
+              group_by(.data$date) %>%
+              mutate(min_depth = min(.data$depth1_m),
+                     max_depth = max(.data$depth1_m)) %>%
+              ungroup() %>%
+              filter(.data$depth1_m == .data$min_depth |
+                       .data$depth1_m == .data$max_depth) %>%
+              mutate(depth = ifelse(.data$depth1_m > 2,
+                                    "Bottom", "Surface")) %>%
+              select(.data$date, .data$result, .data$depth)
+  DO     <- filter_parameter(water_chem, "DISSOLVED OXYGEN HOBO") %>%
+            filter(.data$lake == !!lake,
+                     !is.na(.data$result)) %>%
+              group_by(.data$date) %>%
+              mutate(min_depth = min(.data$depth1_m),
+                     max_depth = max(.data$depth1_m)) %>%
+              ungroup() %>%
+              filter(.data$depth1_m == .data$min_depth |
+                       .data$depth1_m == .data$max_depth) %>%
+              mutate(depth = ifelse(.data$depth1_m > 3,
+                                    "Bottom", "Surface")) %>%
+              select(.data$date, .data$result, .data$depth)
   
   plot_obj <- ggplot() +
-              geom_line(data = HOBO,
+              geom_line(data = ltmp,
                         aes(x = date, 
-                            y = elev_m,
-                            color = ltmp)) +
-              geom_line(data = levels,
-                        aes(x = date,
-                            y = level_m),
-                        color = "black",
+                            y = result,
+                            color = depth,
+                            linetype = "Temperature"),
                         size = 1) +
-              scale_x_datetime(breaks = "1 month",
+              geom_line(data = DO,
+                        aes(x = date, 
+                            y = result*2,
+                            color = depth,
+                            linetype = "DO")) +
+              scale_x_datetime(breaks = "2 months",
                                date_labels = "%b %y") +
               labs(x = "", 
-                   y = "Lake Elevation (m)",
-                   title = sprintf("%s Lake Temperature", lake)) +
-              scale_color_distiller(name = "Temperature (degC)",
-                                    palette = "YlGnBu") +
+                   y = "Temperature (deg C)",
+                   title = sprintf("%s Lake", lake)) +
+              scale_y_continuous(sec.axis = sec_axis(~./2, 
+                                                     name = "Dissolved Oxygen (mg/L)")) +
+              scale_color_brewer(name = "",
+                                 palette = "Paired") +
+              scale_linetype_manual(name = "",
+                                    breaks = c("Temperature", "DO"),
+                                    values = c("solid", "dotted")) +
               theme_bw() +
               theme(text = element_text(family = "Segoe UI Semilight",
                                         size = text_size),
@@ -55,32 +79,57 @@ plot_ltmp_HOBO <- function(lake) {
   return(plot_obj)
 }
 
-plot_DO_HOBO <- function(lake) {
-  HOBO     <- CSLSdata::DO_HOBO[[lake]]
-  max_HOBO <- max(HOBO$date)
-  min_HOBO <- min(HOBO$date)
-  levels   <- CSLSdata::lake_levels[[lake]]
-  levels   <- levels %>%
-              filter(date > min_HOBO,
-                     date < max_HOBO)
+plot_field <- function(lake, water_chem) {
+  ltmp     <- filter_parameter(water_chem, "TEMPERATURE FIELD") %>%
+              filter(.data$lake == !!lake,
+                     !is.na(.data$result)) %>%
+              group_by(.data$date) %>%
+              mutate(min_depth = min(.data$depth1_m),
+                     max_depth = max(.data$depth1_m)) %>%
+              ungroup() %>%
+              filter(.data$depth1_m == .data$min_depth |
+                       .data$depth1_m == .data$max_depth) %>%
+              mutate(depth = ifelse(.data$depth1_m > 1.5,
+                                    "Bottom", "Surface")) %>%
+              select(.data$date, .data$result, .data$depth)
+  DO     <- filter_parameter(water_chem, "DISSOLVED OXYGEN FIELD") %>%
+            filter(.data$lake == !!lake,
+                     !is.na(.data$result)) %>%
+              group_by(.data$date) %>%
+              mutate(min_depth = min(.data$depth1_m),
+                     max_depth = max(.data$depth1_m)) %>%
+              ungroup() %>%
+              filter(.data$depth1_m == .data$min_depth |
+                       .data$depth1_m == .data$max_depth) %>%
+              mutate(depth = ifelse(.data$depth1_m > 1.5,
+                                    "Bottom", "Surface")) %>%
+              select(.data$date, .data$result, .data$depth)
   
   plot_obj <- ggplot() +
-              geom_line(data = HOBO,
+              geom_line(data = ltmp,
                         aes(x = date, 
-                            y = elev_m,
-                            color = DO)) +
-              geom_line(data = levels,
-                        aes(x = date,
-                            y = level_m),
-                        color = "black",
+                            y = result,
+                            color = depth,
+                            linetype = "Temperature"),
                         size = 1) +
-              scale_x_datetime(breaks = "1 month",
+              geom_line(data = DO,
+                        aes(x = date, 
+                            y = result*2,
+                            color = depth,
+                            linetype = "DO"),
+                        size = 1) +
+              scale_x_datetime(breaks = "2 months",
                                date_labels = "%b %y") +
               labs(x = "", 
-                   y = "Lake Elevation (m)",
-                   title = sprintf("%s Lake DO", lake)) +
-              scale_color_distiller(name = "DO (ppm)",
-                                    palette = "YlGnBu") +
+                   y = "Temperature (deg C)",
+                   title = sprintf("%s Lake", lake)) +
+              scale_y_continuous(sec.axis = sec_axis(~./2, 
+                                                     name = "Dissolved Oxygen (mg/L)")) +
+              scale_color_brewer(name = "",
+                                 palette = "Paired") +
+              scale_linetype_manual(name = "",
+                                    breaks = c("Temperature", "DO"),
+                                    values = c("solid", "dotted")) +
               theme_bw() +
               theme(text = element_text(family = "Segoe UI Semilight",
                                         size = text_size),
@@ -92,15 +141,11 @@ plot_DO_HOBO <- function(lake) {
 
 ```
 
-```{r ltmp, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+# Temperature and DO Line Plots
 
-plot_ltmp_HOBO("Pleasant")
-plot_DO_HOBO("Pleasant")
-plot_ltmp_HOBO("Long")
-plot_ltmp_HOBO("Plainfield")
+```{r lines, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+plot_HOBO("Pleasant", water_chem)
+plot_field("Long", water_chem)
+plot_field("Plainfield", water_chem)
 
 ```
-
-
-
-

@@ -8,10 +8,9 @@ plot_summary(
   df,
   yaxis_type = "number",
   text_size = 12,
-  site_types = c("precipitation", "upgradient", "downgradient", "deep", "lake",
-    "lake_bottom"),
-  site_labels = c("Precip.", "Upgr.", "Downgr.", "Deep", "Lake Surf", "Lake Bot."),
-  site_colors = c("#1F78B4", "#33A02C", "#B2DF8A", "#6A3D9A", "#FB9A99", "#E31A1C")
+  site_types = c("upgradient", "nogradient", "downgradient", "lake", "lake_bottom"),
+  site_labels = c("Upgr.", "Nogr.", "Downgr.", "Lake Surf", "Lake Bot."),
+  site_colors = c("#33A02C", "#B15928", "#B2DF8A", "#FB9A99", "#E31A1C")
 )
 }
 \arguments{

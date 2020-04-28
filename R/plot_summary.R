@@ -24,14 +24,13 @@
 plot_summary<- function(df,
                         yaxis_type = "number",
                         text_size = 12,
-                        site_types = c("precipitation",
-                                       "upgradient", "downgradient", "deep",
+                        site_types = c("upgradient",
+                                       "nogradient",
+                                       "downgradient",
                                        "lake", "lake_bottom"),
-                        site_labels = c("Precip.",
-                                        "Upgr.", "Downgr.", "Deep",
+                        site_labels = c("Upgr.", "Nogr.", "Downgr.",
                                         "Lake Surf", "Lake Bot."),
-                        site_colors = c("#1F78B4",
-                                        "#33A02C", "#B2DF8A", "#6A3D9A",
+                        site_colors = c("#33A02C", "#B15928", "#B2DF8A",
                                         "#FB9A99", "#E31A1C")){
 
   df$site_type <- factor(df$site_type, levels = site_types)

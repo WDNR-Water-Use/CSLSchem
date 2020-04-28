@@ -18,24 +18,14 @@ library(lubridate)
 library(reshape2)
 library(extrafont)
 
-text_size    <- 12
-lakes        <- c("Pleasant", "Long", "Plainfield")
-SWIMS        <- CSLSchem::SWIMS
-
-find_and_plot <- function(parameter, plotting_name, text_size) {
-  SWIMS_parameter <- filter_parameter(parameter, plotting_name)
-  plot_obj        <- plot_overall(SWIMS_parameter, text_size)
-  return(plot_obj)
-}
-
-plot_timeseries_fcn <- function(parameter, plotting_name, text_size, 
-                                static_gw = TRUE) {
-  SWIMS_parameter <- filter_parameter(parameter = parameter, 
-                                      plotting_name = plotting_name,
-                                      static_gw = static_gw)
-  plot_obj <- plot_timeseries(SWIMS_parameter, text_size)
-  return(plot_obj)
-}
+text_size   <- 12
+lakes       <- c("Pleasant", "Long", "Plainfield")
+water_chem  <- CSLSdata::water_chem
+water_chem  <- water_chem %>%
+               filter(!site_type %in% c("precipitation", "deep"))
+site_types  <- c("upgradient", "nogradient", "downgradient", "lake", "lake_bottom")
+site_labels <- c("Upgr.", "Nogr.", "Downgr.", "Lake Surf", "Lake Bot.")
+site_colors <- c("#33A02C", "#B15928", "#B2DF8A", "#FB9A99", "#E31A1C")
 
 ```
 
@@ -61,9 +51,11 @@ Pleasant.
 parameter     <-"CALCIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Calcium"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Magnesium, Total Recoverable
@@ -83,9 +75,54 @@ Pleasant.
 parameter     <- "MAGNESIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverabel Magnesium"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
+```
+
+## Ca:Mg Ratio
+[Back to top](#top)
+
+Observations:
+
+* At all lakes, there is dip in Ca:Mg values from spring to summer. This happens
+a bit earlier in Long Lake and Plainfield Lake (~March-June) than it does at
+Pleasant Lake (~April-August).
+* Most wells also have a small dip in Ca:Mg relative to their overall timeseries
+in June 2019, particularly at Long Lake.
+* At Pleasant Lake, Ca:MG is similar at lake and groundwater sites. At Long
+Lake, the lake is at the high end of the range in groundwater sites. At
+Plainfield Lake, the lake is generally higher than groundwater sites.
+* There is no pattern in whether upgradient or downgradient wells have a higher Ca:Mg
+* Ca:Mg is more variable spatially than temporally in groundwater, and is
+generally more stable in groundwater than at lakes.
+
+```{r Ca_Mg, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"CALCIUM TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverable Calcium"
+Ca            <- filter_parameter(water_chem, parameter, plotting_name)
+Ca            <- Ca %>%
+                 select(.data$lake, .data$site_type, .data$date, .data$result,
+                        .data$site_id)
+
+parameter     <- "MAGNESIUM TOTAL RECOVERABLE"
+plotting_name <- "Total Recoverabel Magnesium"
+Mg            <- filter_parameter(water_chem, parameter, plotting_name)
+Mg            <- Mg %>%
+                 select(.data$lake, .data$site_type, .data$date, .data$result,
+                        .data$site_id)
+
+Ca_Mg         <- merge(Ca, Mg, by = c("date", "lake", "site_type", "site_id"))
+Ca_Mg$result  <- Ca_Mg$result.x/Ca_Mg$result.y
+Ca_Mg$lod     <- 0
+Ca_Mg$loq     <- 0
+
+plot_summary(Ca_Mg, yaxis_type = "number", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(Ca_Mg, yaxis_type = "number", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Alkalinity, Total CaCO3
@@ -102,12 +139,14 @@ Plainfield, downgradient groundwater is a little more similar to lake water at
 Pleasant.
 
 ```{r CACO3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-parameter     <-"ALKALINITY TOTAL CACO3"
+parameter     <- c("ALKALINITY TOTAL CACO3", "ALKALINITY TOTAL GRAN AVAL UEQ/L")
 plotting_name <- "Alkalinity Total CaCO3"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 
@@ -128,9 +167,11 @@ Pleasant.
 parameter     <-"HARDNESS TOTAL RECOVERABLE CALCULATION"
 plotting_name <- "Total Recoverable Hardness"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Aluminum, Total Recoverable
@@ -150,9 +191,11 @@ detection).
 parameter     <-"ALUMINUM,TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Aluminum"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Iron, Total Recoverable
@@ -172,9 +215,11 @@ than 1 mg/L at Long.
 parameter     <-"IRON TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Iron"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Manganese, Total Recoverable
@@ -194,9 +239,11 @@ groundwater concentrations.
 parameter     <-"MANGANESE, TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Manganese"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Conductivity
@@ -217,9 +264,11 @@ lakes.
 parameter     <-"CONDUCTIVITY, UMHOS/CM @ 25C"
 plotting_name <- "Conductivity"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Chloride
@@ -242,9 +291,11 @@ mg/l, correct)?
 parameter     <-"CHLORIDE"
 plotting_name <- "Chloride"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Sodium, Total Recoverable
@@ -261,9 +312,11 @@ but generally higher than groundwater at Plainfield.
 parameter     <-"SODIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Sodium"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Nitrogen, NH3-N Dissolved
@@ -279,9 +332,11 @@ all but two samples) and still very low in lakes
 parameter     <-"NITROGEN NH3-N DISS"
 plotting_name <- "Dissolved Ammonium as Nitrogen"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "number", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "number", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Nitrogen, NO3 + NO2 Dissolved (as N)
@@ -298,9 +353,11 @@ than Long and Plainfield, which are all non-detect.
 parameter     <-"NITROGEN NO3+NO2 DISS (AS N)"
 plotting_name <- "Dissolved Nitrate/Nitrite as Nitrogen"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "number", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "number", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Phosphorus, Total
@@ -319,9 +376,11 @@ Lake.
 parameter     <-"PHOSPHORUS TOTAL"
 plotting_name <- "Total Phosphorus"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Potassium, Total Recoverable
@@ -337,9 +396,11 @@ similar to groundwater levels at Long and Plainfield
 parameter     <-"POTASSIUM TOTAL RECOVERABLE"
 plotting_name <- "Total Recoverable Potassium"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size, yaxis_type = "log")
-plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "log", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "log", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## Silica, Dissolved (as SiO2)
@@ -348,7 +409,7 @@ plot_timeseries(SWIMS_parameter, text_size, yaxis_type = "log")
 Observations:
 
 * Lake values may have a seasonal pattern
-* Lake vlaues are lower than groundwater values
+* Lake values are lower than groundwater values
 * Downgradient values are lower than upgradinet values at Pleasant Lake, but all
 groundwater is similar at Long and Plainfield.
 * Levels are less variable in grundwater than in the lake
@@ -357,9 +418,11 @@ groundwater is similar at Long and Plainfield.
 parameter     <-"SILICA, DISSOLVED (MG/L AS SI02)"
 plotting_name <- "Dissolved Silica as SiO2"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "number", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "number", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 ## pH
@@ -376,9 +439,11 @@ lower at Long.
 parameter     <-"PH LAB"
 plotting_name <- "pH"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "number", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "number", text_size, 
+                site_types, site_labels, site_colors)
 ```
 
 
@@ -390,11 +455,13 @@ Observations:
 * Sulfate is below the limit of quality for nearly all samples
 
 ```{r So4, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
-parameter     <-"SULFATE TOTAL"
-plotting_name <- "Total Sulfate"
+parameter     <- c("SULFATE TOTAL", "SULFATE DISS, AS SO4")
+plotting_name <- "Sulfate"
 
-SWIMS_parameter <- filter_parameter(SWIMS, parameter, plotting_name)
-plot_summary(SWIMS_parameter, text_size)
-plot_timeseries(SWIMS_parameter, text_size)
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+plot_summary(this_parameter, yaxis_type = "number", text_size, 
+             site_types, site_labels, site_colors)
+plot_timeseries(this_parameter, yaxis_type = "number", text_size, 
+                site_types, site_labels, site_colors)
 ```
 

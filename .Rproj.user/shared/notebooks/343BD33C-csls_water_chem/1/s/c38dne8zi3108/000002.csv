@@ -1,4 +1,0 @@
-"0","parameter     <-""ALUMINUM,TOTAL RECOVERABLE"""
-"0","plotting_name <- ""Total Recoverable Aluminum"""
-"0",""
-"0","plot_bulk_fcn(parameter, plotting_name, text_size, static_gw = FALSE)"

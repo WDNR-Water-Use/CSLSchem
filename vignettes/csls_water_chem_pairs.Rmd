@@ -1,0 +1,197 @@
+---
+title: "CSLS Water Chem Visualization: Pairwise Comparisons"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Pairs}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE, fig.width=10, fig.height=7}
+library(knitr)
+library(CSLSchem)
+library(dplyr)
+library(ggplot2)
+library(extrafont)
+library(stringr)
+
+text_size    <- 12
+lakes        <- c("Pleasant", "Long", "Plainfield")
+pair_names   <- c("MAGNESIUM TOTAL RECOVERABLE",
+                  "CALCIUM TOTAL RECOVERABLE",
+                  "CHLORIDE",
+                  "SODIUM TOTAL RECOVERABLE")
+water_chem   <- CSLSdata::water_chem
+water_chem   <- water_chem %>%
+                filter(.data$description %in% pair_names,
+                       .data$site_type != "deep") %>%
+                mutate(result = as.numeric(.data$result)) %>%
+                select(.data$date, .data$lake, .data$site_type,
+                       .data$description, .data$result)
+names <- data.frame(description = pair_names,
+                    new_name = c("Mg", "Ca", "Cl", "Na"))
+names <- names %>% mutate_all(as.character)
+water_chem$description <- as.character(water_chem$description)
+for (i in 1:nrow(names)) {
+  water_chem$description <- str_replace_all(water_chem$description,
+                                            names$description[i],
+                                            names$new_name[i])
+}
+pairs        <- merge(water_chem, water_chem,
+                      by = c("date", "lake", "site_type"))
+colnames(pairs) <- c("date", "lake", "site_type", "x_param", 
+                     "x_val", "y_param", "y_val")
+
+lake <- "Pleasant"
+plot_df  <- pairs %>% filter(.data$lake %in% c(!!lake, "Precip"))
+ggplot(plot_df, 
+       aes(x = x_val, y = y_val, color = site_type)) +
+              geom_point() +
+              facet_grid(y_param ~ x_param, 
+                         scales = "free",
+                         switch = "y") +
+              stat_smooth(method = "lm", se = FALSE, color = "grey40") +
+              scale_color_manual(name = "",
+                                 breaks = c("precipitation",
+                                            "upgradient",
+                                            "nogradient",
+                                            "downgradient",
+                                            "lake"),
+                                 labels = c("Precipitation",
+                                            "Groundwater Inflow",
+                                            "Groundawter No Grad.",
+                                            "Groundwater Outflow",
+                                            "Lake"),
+                                 values = c("#1F78B4",
+                                            "#33A02C",
+                                            "#B15928",
+                                            "#B2DF8A",
+                                            "#E31A1C")) +
+    labs(x = "", y = "", title = sprintf("%s Lake", lake)) +
+    theme_bw() +
+    theme(text = element_text(family = "Segoe UI Semilight",
+                              size = text_size),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
+
+lake <- "Long"
+plot_df  <- pairs %>% filter(.data$lake %in% c(!!lake, "Precip"))
+ggplot(plot_df, 
+       aes(x = x_val, y = y_val, color = site_type)) +
+              geom_point() +
+              facet_grid(y_param ~ x_param, 
+                         scales = "free",
+                         switch = "y") +
+              stat_smooth(method = "lm", se = FALSE, color = "grey40") +
+              scale_color_manual(name = "",
+                                 breaks = c("precipitation",
+                                            "upgradient",
+                                            "nogradient",
+                                            "downgradient",
+                                            "lake"),
+                                 labels = c("Precipitation",
+                                            "Groundwater Inflow",
+                                            "Groundawter No Grad.",
+                                            "Groundwater Outflow",
+                                            "Lake"),
+                                 values = c("#1F78B4",
+                                            "#33A02C",
+                                            "#B15928",
+                                            "#B2DF8A",
+                                            "#E31A1C")) +
+    labs(x = "", y = "", title = sprintf("%s Lake", lake)) +
+    theme_bw() +
+    theme(text = element_text(family = "Segoe UI Semilight",
+                              size = text_size),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
+
+lake <- "Plainfield"
+plot_df  <- pairs %>% filter(.data$lake %in% c(!!lake, "Precip"))
+ggplot(plot_df, 
+       aes(x = x_val, y = y_val, color = site_type)) +
+              geom_point() +
+              facet_grid(y_param ~ x_param, 
+                         scales = "free",
+                         switch = "y") +
+              stat_smooth(method = "lm", se = FALSE, color = "grey40") +
+              scale_color_manual(name = "",
+                                 breaks = c("precipitation",
+                                            "upgradient",
+                                            "nogradient",
+                                            "downgradient",
+                                            "lake"),
+                                 labels = c("Precipitation",
+                                            "Groundwater Inflow",
+                                            "Groundawter No Grad.",
+                                            "Groundwater Outflow",
+                                            "Lake"),
+                                 values = c("#1F78B4",
+                                            "#33A02C",
+                                            "#B15928",
+                                            "#B2DF8A",
+                                            "#E31A1C")) +
+    labs(x = "", y = "", title = sprintf("%s Lake", lake)) +
+    theme_bw() +
+    theme(text = element_text(family = "Segoe UI Semilight",
+                              size = text_size),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
+
+
+```
+
+```{r next, echo=FALSE, eval=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.height=7}
+
+text_size    <- 12
+lakes        <- c("Pleasant", "Long", "Plainfield")
+pair_names   <- c("MAGNESIUM TOTAL RECOVERABLE",
+                  "ALKALINITY TOTAL CACO3")
+water_chem   <- CSLSdata::water_chem
+water_chem   <- water_chem %>%
+                filter(.data$description %in% pair_names,
+                       .data$site_type != "deep") %>%
+                mutate(result = as.numeric(.data$result)) %>%
+                select(.data$date, .data$lake, .data$site_type,
+                       .data$description, .data$result)
+pairs        <- merge(water_chem, water_chem,
+                      by = c("date", "lake", "site_type"))
+colnames(pairs) <- c("date", "lake", "site_type", "Mg", 
+                     "x_val", "Alkalinity", "x_val")
+
+pairs <- pairs %>% filter(.data$Mg == "MAGNESIUM TOTAL RECOVERABLE",
+                          .data$Alk == "ALKALINITY TOTAL CACO3") 
+
+lake <- "Pleasant"
+plot_df  <- pairs %>% filter(.data$lake %in% c(!!lake, "Precip"))
+ggplot(plot_df, 
+       aes(x = x_val, y = y_val, color = site_type)) +
+              geom_point() +
+              facet_grid(y_param ~ x_param, 
+                         scales = "free",
+                         switch = "y") +
+              stat_smooth(method = "lm", se = FALSE, color = "grey40") +
+              scale_color_manual(name = "",
+                                 breaks = c("precipitation",
+                                            "upgradient",
+                                            "nogradient",
+                                            "downgradient",
+                                            "lake"),
+                                 labels = c("Precipitation",
+                                            "Groundwater Inflow",
+                                            "Groundawter No Grad.",
+                                            "Groundwater Outflow",
+                                            "Lake"),
+                                 values = c("#1F78B4",
+                                            "#33A02C",
+                                            "#B15928",
+                                            "#B2DF8A",
+                                            "#E31A1C")) +
+    labs(x = "", y = "", title = sprintf("%s Lake", lake)) +
+    theme_bw() +
+    theme(text = element_text(family = "Segoe UI Semilight",
+                              size = text_size),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())

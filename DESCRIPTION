@@ -12,6 +12,7 @@ Depends:
 Imports: 
     ggplot2,
     CSLSdata,
+    CSLSevap,
     dplyr,
     magrittr,
     extrafont,
@@ -22,7 +23,8 @@ Imports:
     stats,
     stringr,
     CSLSiso,
-    reshape2
+    reshape2,
+    zoo
 Suggests:
     knitr,
     rmarkdown

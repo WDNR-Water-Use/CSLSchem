@@ -5,23 +5,30 @@
 \title{Filter SWIMS by parameter}
 \usage{
 filter_parameter(
-  SWIMS,
+  water_chem,
   parameter,
-  plotting_name,
+  plotting_name = "",
+  numeric = TRUE,
   no_blanks = TRUE,
   no_dups = TRUE,
-  no_age = FALSE
+  no_age = FALSE,
+  no_bad_well = FALSE,
+  no_lod = FALSE,
+  no_comment = FALSE,
+  note_lake_bottom = FALSE
 )
 }
 \arguments{
-\item{SWIMS}{data frame with SWIMS information for lakes of interest}
+\item{water_chem}{data frame with water_chem information for sites of interest}
 
 \item{parameter}{- parameter to subset by, must exactly match DNR description
-(e.g., "ALUMINUM,TOTAL RECOVERABLE")}
+(e.g., "ALUMINUM,TOTAL RECOVERABLE"). Can be a vector of
+multiple descriptors.}
 
 \item{plotting_name}{- name of parameter to use for plotting, e.g., "Total
-Recoverable Alumninum". Units will be added in based
-on SWIMS field.}
+Recoverable Alumninum", no units. Defaults to "".}
+
+\item{numeric}{logical defaults to TRUE to indicate results should be numeric}
 
 \item{no_blanks}{logical defaults to TRUE to exclude blank samples}
 
@@ -29,9 +36,22 @@ on SWIMS field.}
 
 \item{no_age}{logical defaults to FALSE to include samples that were analyzed
 past the holding date.}
+
+\item{no_bad_well}{logical defaults to FALSE to include samples from wells
+known to behave weirdly.}
+
+\item{no_lod}{logical defaults to FALSE to include samples with results below
+the limit of detection.}
+
+\item{no_comment}{logical defaults to FALSE to include samples with other
+comments from the lab}
+
+\item{note_lake_bottom}{logical defaults to FALSE to leave all lake samples
+as "lake". If true, notes samples > 5m deep as
+"lake_bottom".}
 }
 \value{
-SWIMS_parameter, same data frame, with only the results for the
+df, same data frame, with only the results for the
         parameter of interest. Also includes the given plotting name ("name").
 }
 \description{

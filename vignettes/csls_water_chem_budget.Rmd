@@ -13,12 +13,12 @@ vignette: >
 library(CSLSchem)
 text_size    <- 12
 lakes        <- c("Pleasant", "Long", "Plainfield")
-SWIMS        <- CSLSchem::SWIMS
+SWIMS        <- CSLSdata::water_chem
 ```
 
 # Pleasant Lake
 
-```{r psnt, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=5, fig.align="center"}
+```{r psnt, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=5, fig.align="center"}
 lake     <- "Pleasant"
 chem_bal <- calculate_chem_bal(lake)
 plot_mass_in(chem_bal, text_size = text_size)
@@ -27,7 +27,7 @@ plot_mass_bal(chem_bal, lake, text_size = text_size)
 
 # Long Lake
 
-```{r long, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=4, fig.align="center"}
+```{r long, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=4, fig.align="center"}
 lake     <- "Long"
 chem_bal <- calculate_chem_bal(lake)
 plot_mass_in(chem_bal, text_size = text_size)
@@ -36,7 +36,7 @@ plot_mass_bal(chem_bal, lake, text_size = text_size)
 
 # Plainfield Lake
 
-```{r pfl, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=4, fig.align="center"}
+```{r pfl, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=4, fig.align="center"}
 lake     <- "Plainfield"
 chem_bal <- calculate_chem_bal(lake)
 plot_mass_in(chem_bal, text_size = text_size)

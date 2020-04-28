@@ -13,14 +13,6 @@ plot_timeseries_by_year(df, yaxis_type = "number", text_size = 12)
 "log" for semi-log plot.}
 
 \item{text_size}{size of text on plots, defaults to 12pt.}
-
-\item{site_types}{possible site types to plot}
-
-\item{site_labels}{how to display names of site types in legends}
-
-\item{site_colors}{colors to use for site types}
-
-\item{site_shapes}{shapes to use for site types}
 }
 \value{
 plot_obj, the plot object created by ggplot.
