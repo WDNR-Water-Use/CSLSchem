@@ -9,8 +9,13 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+```{r setup, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
 library(CSLSchem)
+library(dplyr)
+library(extrafont)
+library(ggplot2)
+library(reshape2)
+
 text_size  <- 12
 mass_fluxes <- calculate_solute_balance()
 mass_fluxes <- mass_fluxes %>%
@@ -57,7 +62,7 @@ format_table <- function(mass_fluxes, lake) {
 
 ## Pleasant Lake
 
-```{r psnt, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=4, fig.align="center"}
+```{r psnt, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
 lake <- "Pleasant"
 plot_solutes(mass_fluxes, lake, text_size)
 kableExtra::kable(format_table(mass_fluxes, lake), 
@@ -66,7 +71,7 @@ kableExtra::kable(format_table(mass_fluxes, lake),
 
 ## Long Lake
 
-```{r long, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=4, fig.align="center"}
+```{r long, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
 lake <- "Long"
 plot_solutes(mass_fluxes, lake, text_size)
 kableExtra::kable(format_table(mass_fluxes, lake), 
@@ -75,7 +80,7 @@ kableExtra::kable(format_table(mass_fluxes, lake),
 
 ## Plainfield Lake
 
-```{r pfl, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=4, fig.align="center"}
+```{r pfl, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
 lake <- "Plainfield"
 plot_solutes(mass_fluxes, lake, text_size)
 kableExtra::kable(format_table(mass_fluxes, lake), 
