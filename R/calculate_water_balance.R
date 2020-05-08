@@ -42,7 +42,7 @@
 
 calculate_water_balance <- function(desired_lakes = c("Pleasant", "Long", "Plainfield"),
                                     chem_df = CSLSdata::water_chem,
-                                    chem_tracer = "MAGNESIUM TOTAL RECOVERABLE",
+                                    chem_tracer = "d18O",
                                     start_date = "10-01-2018",
                                     end_date = "09-30-2019",
                                     annual = FALSE,
@@ -112,7 +112,9 @@ calculate_water_balance <- function(desired_lakes = c("Pleasant", "Long", "Plain
   }
 
   # Interpolate values to the last day of the month
-  tracer   <- interpolate_tracer_values(tracer)
+  tracer   <- interpolate_chem_values(tracer, dt = "month")
+  tracer$date <- tracer$date + months(1) - days(1)
+
 
   # Map precip to each lake
   for (lake in desired_lakes) {

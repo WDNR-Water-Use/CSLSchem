@@ -1,0 +1,190 @@
+---
+title: "CSLS Water Budget"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{water_budget}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+library(CSLSchem)
+library(dplyr)
+library(extrafont)
+library(ggplot2)
+library(reshape2)
+library(kableExtra)
+
+text_size  <- 12
+fig_width  <- 6.5
+fig_height <- 6
+water_budget_monthly1 <- calculate_water_balance()
+water_budget_annual1  <- calculate_water_balance(annual = TRUE)
+water_budget_monthly2 <- calculate_water_balance(chem_tracer = "MAGNESIUM TOTAL RECOVERABLE")
+water_budget_annual2  <- calculate_water_balance(chem_tracer = "MAGNESIUM TOTAL RECOVERABLE",
+                                                 annual = TRUE)
+```
+
+# Annual Water Budges
+
+## Annual using d18O
+
+This is rather high, but otherwise makes sense physically, especially since
+water levels are at record highs.
+
+```{r annual1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=4, fig.align="center"}
+plot_water_bal(water_budget_annual1, annual = TRUE)
+plot_water_bal(water_budget_annual1, annual = TRUE, as_pcnt = TRUE)
+```
+
+## Annual using Mg
+
+This is clearly wrong for Long and Plainfield; groundwater outflow is negative.
+
+```{r annual2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=4, fig.align="center"}
+plot_water_bal(water_budget_annual2, annual = TRUE)
+plot_water_bal(water_budget_annual2, annual = TRUE, as_pcnt = TRUE)
+```
+
+<br>
+
+# Monthly Water Budets
+
+**Overview:** As with the annual budgets, d18O-derived water budgets seem pretty
+high, but make sense physically. Mg-derived budgets often have negative
+groundwater inflow in the spring (Mar-Jun) and fall (Sep-Oct) and even more
+often have negative groundwater outflow as well.
+
+<br>
+
+To check against another line of evidence, I've also included inflowing
+**seepage flow meter** results for Jun 2018 and Sept 2018. We do not have enough
+data to calculate water balances for Jun 2018, so I compare to Jun 2019 instead.
+There does seem to be a strong seasonal pattern in groundwater inflow/outflow -
+I would expect the Jun 2019 to be similar, but slighely higher than what the Jun
+2018 fluxes were (e.g., 200,000 m^3/month instead of 160,000 m^3/month).
+
+<br>
+
+**Groundwater inflow derived from d18O** is generally in the same ballpark as
+seepage meter results, with two exceptions:
+
+  1. *Pleasant Lake, Sep 2018*: I think it's pretty clear the seepage meter
+  results are far too high here. They are ~3-4x higher than the maximum
+  calculated groundwater inflow in any month for Pleasant Lake.
+  2. *Long Lake, Jun 2018*: Note we have to compare this to calculated
+  groundwater inflow for Jun 2019, but the d18O-derived flux is an order of
+  magnitude too high while the Mg-derived flux is in the same ballpark. That
+  said, the Mg-derived flux leads to negative groundwater outflow, so maybe this
+  is also a case of the seepage meters being a bit off.
+
+**Groundwater inflow derived from Mg** is sometimes in the same ballpark as
+seepage meter results, but is equally often negative (all lakes, Sept 2019) or
+an order of magnitude too low (Plainfield, Jun 2019).
+
+<br>
+
+**Conclusions:** Overall, this analysis lends credence to the d18O results.
+Mg-derived inflow values may be reliable in the summer (Jun/Jul/Aug) at Pleasant
+Lake and winter (Nov/Dec/Jan/Feb) in all lakes, but there is clearly something
+wrong with values for all other months and these errors make it very difficult
+to calculate an annual budget from Mg.
+
+## Pleasant Lake
+
+Groundwater Inflow, Sept 2018:
+
+  * Average seepage meter (n = 2): 0.1412 m/d * 554,792.2 m^2= **2,350,000** m^3/month
+  * Min seepage meter: 0.1315 m/d * 554,792.2 m^2 = 2,190,000 m^3/month
+  * Max seepage meter: 0.1508 m/d * 554,792.2 m^2 = 2,510,000 m^3/month
+  * Sept 2018 d18O water balance: **308,000** m^3/month
+  * Sept 2019 d18O water balance: 264,000 m^3/month
+  * Sept 2018 Mg water balance: **248,000** m^3/month
+  * Sept 2019 Mg water balance: -104,000 m^3/month
+
+Groundwater Inflow, Jun 2018: 
+
+  * Average seepage meter (n = 6): 0.0117 m/d * 551,378.1 m^2 = **194,000** m^3/month
+  * Min seepage meter: 0.0022 m/d * 551,378.1 m^2 = 36,400 m^3/month
+  * Max seepage meter: 0.0328 m/d * 551,378.1 m^2 = 543,000 m^3/month
+  * Jun 2019 d18O water balance: **326,000** m^3/month
+  * Jun 2019 Mg water balance: **151,000** m^3/month
+
+### Monthly using d18O
+
+```{r psnt1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_water_bal(filter(water_budget_monthly1, lake == "Pleasant"))
+```
+
+### Monthly using Mg2+
+
+```{r psnt2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_water_bal(filter(water_budget_monthly2, lake == "Pleasant"))
+```
+
+
+## Long Lake
+
+Groundwater Inflow, Sept 2018:
+
+  * Average seepage meter (n = 3): 0.0035 m/d * 213,053.5 m^2 = **22,400** m^3/month
+  * Min seepage meter: 0.0006 m/d * 213,053.5 m^2 = 3,800 m^3/month
+  * Max seepage meter: 0.0053 m/d * 213,053.5 m^2 = 34,000 m^3/month
+  * Sept 2018 d18O water balance: **17,800** m^3/month
+  * Sept 2019 d18O water balance: 19,000 m^3/month
+  * Sept 2018 Mg water balance: **15,000** m^3/month
+  * Sept 2019 Mg water balance: -11,000 m^3/month
+
+Groundwater Inflow, Jun 2018: 
+
+  * Average seepage meter (n = 7): 0.0035 m/d * 206,032.4 m^2 = **21,600** m^3/month
+  * Min seepage meter: 0.0006 m/d * 206,032.4 m^2 = 3,700 m^3/month
+  * Max seepage meter: 0.0053 m/d * 206,032.4 m^2 = 33,000 m^3/month
+  * Jun 2019 d18O water balance: **119,000** m^3/month
+  * Jun 2019 Mg water balance: **11,000** m^3/month
+
+### Monthly using d18O
+
+```{r long1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_water_bal(filter(water_budget_monthly1, lake == "Long"))
+```
+
+### Monthly using Mg2+
+
+```{r long2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_water_bal(filter(water_budget_monthly2, lake == "Long"))
+```
+
+## Plainfield Lake
+
+Groundwater Inflow, Sept 2018:
+
+  * Average seepage meter (n = 3): 0.0049 m/d * 171,124.4 m^2 = **25,000** m^3/month
+  * Min seepage meter: 0.0003 m/d * 171,124.4 m^2 = 1,500 m^3/month
+  * Max seepage meter: 0.0130 m/d * 171,124.4 m^2 = 67,000 m^3/month
+  * Sept 2018 d18O water balance: **34,000** m^3/month
+  * Sept 2019 d18O water balance: 47,000 m^3/month
+  * Sept 2018 Mg water balance: **15,000** m^3/month
+  * Sept 2019 Mg water balance: -6,800 m^3/month
+
+Groundwater Inflow, Jun 2018: 
+
+  * Average seepage meter (n = 7): 0.0235 m/d * 158,009.7 m^2 = **111,400** m^3/month
+  * Min seepage meter: 0.0012 m/d * 158,009.7 m^2 = 5,700 m^3/month
+  * Max seepage meter: 0.1002 m/d * 158,009.7 m^2 = 475,000 m^3/month
+  * Jun 2019 d18O water balance: **174,000** m^3/month
+  * Jun 2019 Mg water balance: **4,700** m^3/month
+
+### Monthly using d18O
+
+```{r pfl1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_water_bal(filter(water_budget_monthly1, lake == "Plainfield"))
+```
+
+### Monthly using Mg2+
+
+```{r pfl2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_water_bal(filter(water_budget_monthly2, lake == "Plainfield"))
+```

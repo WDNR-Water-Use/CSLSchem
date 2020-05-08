@@ -139,6 +139,54 @@ plot_field <- function(lake, water_chem) {
   return(plot_obj)
 }
 
+
+
+plot_HOBO_all <- function(lake, water_chem) {
+  ltmp <- filter_parameter(water_chem, "TEMPERATURE HOBO") %>%
+          arrange(.data$date) %>%
+          filter(.data$lake == !!lake, !is.na(.data$result)) %>%
+          mutate(day = floor_date(.data$date, unit = "day"))
+  DO   <- filter_parameter(water_chem, "DISSOLVED OXYGEN HOBO") %>%
+          filter(.data$lake == !!lake, !is.na(.data$result)) %>%
+          mutate(day = floor_date(.data$date, unit = "day"))
+          
+  level <- CSLSdata::lake_levels
+  level <- level %>% filter(.data$lake == !!lake)
+  
+  ltmp      <- merge(ltmp, level, by.x = "day", by.y = "date", all.x = TRUE)
+  ltmp$elev <- ltmp$level_m - ltmp$depth1_m
+  DO        <- merge(DO, level, by.x = "day", by.y = "date", all.x = TRUE)
+  DO$elev   <- DO$level_m - DO$depth1_m
+  
+  
+  plot_obj <- ggplot() +
+              geom_path(data = ltmp,
+                        aes(x = date, 
+                            y = elev,
+                            color = result),
+                        size = 2.5) +
+              geom_line(data = level,
+                        aes(x = date, 
+                            y = level_m),
+                        color = "black", 
+                        size = 1) +
+              scale_x_datetime(breaks = "2 months",
+                               date_labels = "%b %y") +
+              labs(x = "", 
+                   y = "Elevation (mamsl)",
+                   title = sprintf("%s Lake", lake)) +
+              scale_color_distiller(name = "",
+                                    palette = "YlGnBu") +
+              theme_bw() +
+              theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    legend.position = "top")
+  return(plot_obj)
+}
+
+
 ```
 
 # Temperature and DO Line Plots

@@ -20,6 +20,9 @@
 #'                   ("2018-10-01").
 #' @param end_date end date of analysis. Defaults to end of WY2019
 #'                   ("2019-09-30").
+#' @param annual logical defaults to FALSE to calculate solute balance on a
+#'                monthly time step. If TRUE, calculates for entire timeseries
+#'                (start_date to end_date), assumed to be one year.
 #'
 #' @return mass_fluxes
 #'
@@ -33,34 +36,40 @@
 #' @export
 
 calculate_solute_balance <- function(desired_lakes = c("Pleasant", "Long", "Plainfield"),
-                                    chem_df = CSLSdata::water_chem,
-                                    chem_tracer = "d18O",
-                                    solutes = c("CALCIUM TOTAL RECOVERABLE",
-                                                "CHLORIDE",
-                                                "MAGNESIUM TOTAL RECOVERABLE",
-                                                "NITROGEN NH3-N DISS",
-                                                "SODIUM TOTAL RECOVERABLE",
-                                                "SULFATE TOTAL"),
-                                    start_date = "10-01-2018",
-                                    end_date = "09-30-2019"){
+                                     chem_df = CSLSdata::water_chem,
+                                     chem_tracer = "d18O",
+                                     solutes = c("CALCIUM TOTAL RECOVERABLE",
+                                                 "CHLORIDE",
+                                                 "MAGNESIUM TOTAL RECOVERABLE",
+                                                 "NITROGEN NH3-N DISS",
+                                                 "SODIUM TOTAL RECOVERABLE",
+                                                 "SULFATE TOTAL"),
+                                     start_date = "10-01-2018",
+                                     end_date = "09-30-2019",
+                                     annual = FALSE){
 
+  # WATER FLUXES ---------------------------------------------------------------
   # Calculate water balance
   water_fluxes <- calculate_water_balance(desired_lakes, chem_df, chem_tracer,
-                                          start_date, end_date, annual = TRUE)
-  water_fluxes <- water_fluxes %>%
-                  select(.data$lake, .data$P_m3, .data$dV_m3, .data$GWin_m3,
-                         .data$GWout_m3)
-  water_fluxes <- melt(water_fluxes, id.vars = "lake")
-  colnames(water_fluxes) <- c("lake", "site_type", "vol_m3")
-  water_fluxes$site_type <- str_replace(water_fluxes$site_type,
-                                        "P_m3", "precipitation")
-  water_fluxes$site_type <- str_replace(water_fluxes$site_type,
-                                        "dV_m3", "delta_lake")
-  water_fluxes$site_type <- str_replace(water_fluxes$site_type,
-                                        "GWin_m3", "upgradient")
-  water_fluxes$site_type <- str_replace(water_fluxes$site_type,
-                                        "GWout_m3", "downgradient")
+                                          start_date, end_date, annual)
 
+  # Pull out fluxes of interest
+  water_fluxes <- water_fluxes %>%
+                  select(.data$date, .data$lake, .data$P_m3, .data$dV_m3,
+                         .data$GWin_m3, .data$GWout_m3)
+
+  # Rename fluxes to match site_types in water_chem data frame
+  water_cols   <- c("P_m3", "dV_m3", "GWin_m3", "GWout_m3")
+  water_names  <- c("precipitation", "delta_lake", "upgradient", "downgradient")
+  water_fluxes <- melt(water_fluxes, id.vars = c("date", "lake"))
+  colnames(water_fluxes) <- c("date", "lake", "site_type", "vol_m3")
+  for (i in 1:length(water_cols)) {
+    water_fluxes$site_type <- str_replace(water_fluxes$site_type,
+                                          water_cols[i],
+                                          water_names[i])
+  }
+
+  # SOLUTE CONCENTRATIONS ------------------------------------------------------
   # Convert dates to datetime
   start_date <- as_datetime(mdy(start_date))
   end_date   <- as_datetime(mdy(end_date))
@@ -72,17 +81,34 @@ calculate_solute_balance <- function(desired_lakes = c("Pleasant", "Long", "Plai
     C_solute <- C_solute %>%
                 filter(.data$date >= start_date,
                        .data$date <= end_date,
-                       .data$site_type %in% c("precipitation", "lake",
-                                              "upgradient")) %>%
-                group_by(.data$lake, .data$site_type) %>%
-                summarise(result = mean(.data$result, na.rm = TRUE),
-                          units = unique(.data$units)) %>%
-                ungroup() %>%
-                mutate(parameter = solute)
+                       .data$site_type %in% c("precipitation",
+                                              "lake",
+                                              "upgradient"))
+
+    units <- unique(C_solute$units)[!is.na(unique(C_solute$units))]
+    if (length(units) > 1 ) {
+      warning("One or more solutes has units other than MG/L")
+    }
+    C_solute <- interpolate_chem_values(C_solute, dt = "day") %>%
+                select(.data$date, .data$lake, .data$site_type, .data$result)
+    if (annual) {
+      C_solute <- C_solute %>%
+                  group_by(.data$lake, .data$site_type) %>%
+                  summarise(result = mean(.data$result, na.rm = TRUE)) %>%
+                  ungroup() %>%
+                  mutate(parameter = solute,
+                         units = units)
+    } else {
+      C_solute <- C_solute %>%
+                  group_by(lake = .data$lake,
+                           site_type = .data$site_type,
+                           date = floor_date(.data$date, unit = "month")) %>%
+                  summarise(result = mean(.data$result, na.rm = TRUE)) %>%
+                  ungroup() %>%
+                  mutate(parameter = solute,
+                         units = units)
+    }
     C_solutes <- rbind(C_solutes, C_solute)
-  }
-  if (length(unique(C_solutes$units)) > 1 ) {
-    warning("One or more solutes has units other than MG/L")
   }
 
   # Map precip to each lake
@@ -103,6 +129,7 @@ calculate_solute_balance <- function(desired_lakes = c("Pleasant", "Long", "Plai
   C_solutes    <- rbind(C_solutes, C_delta_lake)
   C_solutes    <- rbind(C_solutes, C_downgr)
 
+  # SOLUTE MASSES --------------------------------------------------------------
   # Merge with water fluxes, calcualate mass
   mass_fluxes <- merge(C_solutes,
                        water_fluxes,

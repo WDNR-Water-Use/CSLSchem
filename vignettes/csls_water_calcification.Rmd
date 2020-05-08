@@ -1,0 +1,359 @@
+---
+title: "CSLS Water Chem Visualization: Calcification"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{chem_calcification}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+library(CSLSchem)
+library(dplyr)
+library(stringr)
+library(lubridate)
+library(reshape2)
+library(ggplot2)
+library(extrafont)
+library(stringr)
+
+text_size    <- 12
+lakes        <- c("Pleasant", "Long", "Plainfield")
+water_chem   <- CSLSdata::water_chem
+start_date   <- as_datetime(mdy("10-01-2018"))
+end_date     <- as_datetime(mdy("09-30-2019"))
+
+fig_width  <- 6.5
+fig_height <- 4
+```
+
+## Seasonal Variations in Anions
+
+First, let's look at the data we have about the concentration of major cations
+and anions at each lake over time.
+
+<br>
+
+Note that values for Alkalinity, Calcium, and Magnesium are **~50% higher** at
+Pleasant and Plainfield Lakes than in McConnaughey et al., while Long Lake is
+similar to the values they present for Williams Lake.
+
+```{r cations01, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+# Filter to only anions/cations of interest
+
+parameters <- c("MAGNESIUM TOTAL RECOVERABLE",
+                "ALKALINITY TOTAL CACO3",
+                "CALCIUM TOTAL RECOVERABLE",
+                "SODIUM TOTAL RECOVERABLE",
+                "SULFATE TOTAL",
+                "CHLORIDE")
+plot_names <- c("Mg", "Alkalinity", "Ca", "Na", "SO4", "Cl")
+
+# Get solutes of interest
+  C_solutes <- NULL
+  for (solute in parameters) {
+    C_solute  <- filter_parameter(water_chem, solute)
+    C_solute  <- C_solute %>% filter(.data$site_type == "lake")
+    C_solute  <- interpolate_chem_values(C_solute, dt = "day") %>%
+                 select(.data$lake, .data$date, .data$site_type, .data$result)
+    C_solute$description <- solute
+    C_solutes <- rbind(C_solutes, C_solute)
+  }
+
+# Convert from mg/L to meq/L
+ions        <- merge(C_solutes, mgTOmeq, all.x = TRUE)
+ions$result <- ions$result*ions$mgTOmeq
+ions$lake   <- factor(ions$lake, levels = lakes)
+
+# Sub long descriptions with shorter names for plotting
+for (i in 1:length(parameters)) {
+  ions$description <- str_replace_all(ions$description,
+                                      parameters[i], 
+                                      plot_names[i])
+}
+
+# Plot
+plot_obj <- ggplot(ions) +
+            geom_point(aes(x = .data$date, 
+                          y = .data$result,
+                          color = description),
+                      size = 1.5) +
+            geom_line(aes(x = .data$date, 
+                          y = .data$result,
+                          color = description)) +
+            facet_grid(~lake) +
+            labs(x = "", y = "meq/L") +
+            scale_x_datetime(breaks = "6 months",
+                             minor_breaks = "2 months",
+                             date_labels = "%b-%y") +
+            scale_color_brewer(name = "",
+                               palette = "Set2") +
+            theme_bw() + 
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                      size = text_size),
+                  legend.position = "top")
+plot_obj
+
+```
+
+<br>
+
+Next, let's look at the average monthly values of the major cations (Mg++, Ca++,
+Na+, and K+) realative to the mean Jan/Feb values. The goal of this is to
+visually identify cations which drop during spring dilution, stabilize over the
+summer, then rise over winter. This would indicate that, to a first
+approximation, seasonal fluctuations in those cations reflect dilution.
+
+<br>
+
+None of the cations are very conservative, but **at a first approximation, Mg is
+the most conservative** in all lakes.
+
+```{r cations, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+# Filter to only anions/cations of interest
+
+parameters <- c("MAGNESIUM TOTAL RECOVERABLE",
+                "SODIUM TOTAL RECOVERABLE",
+                "CALCIUM TOTAL RECOVERABLE",
+                "POTASSIUM TOTAL RECOVERABLE")
+plot_names <- c("Mg", "Na", "Ca", "K")
+
+# Get solutes of interest
+C_solutes <- NULL
+for (solute in parameters) {
+  C_solute  <- filter_parameter(water_chem, solute)
+  C_solute  <- C_solute %>% filter(.data$site_type == "lake")
+  C_solute  <- interpolate_chem_values(C_solute, dt = "day") %>%
+    select(.data$lake, .data$date, .data$site_type, .data$result)
+  C_solute$description <- solute
+  C_solutes <- rbind(C_solutes, C_solute)
+}
+  
+# Convert from mg/L to meq/L
+ions        <- merge(C_solutes, mgTOmeq, all.x = TRUE)
+ions$result <- ions$result*ions$mgTOmeq
+ions$lake   <- factor(ions$lake, levels = lakes)
+
+# Sub long descriptions with shorter names for plotting
+for (i in 1:length(parameters)) {
+  ions$description <- str_replace_all(ions$description,
+                                      parameters[i], 
+                                      plot_names[i])
+}
+
+# Find monthly average values across entire timeseries
+ions <- ions %>%
+        group_by(lake = .data$lake,
+                 description = .data$description,
+                 month = month(.data$date)) %>%
+        summarise(result = mean(.data$result, na.rm = TRUE)) %>%
+        ungroup() %>%
+        select(.data$lake, .data$month, .data$description, .data$result)
+
+# Compare to mean Jan/Feb values
+mean_ions   <- ions %>%
+               filter(.data$month %in% c(1, 2)) %>%
+               group_by(.data$lake, .data$description) %>%
+               summarise(mean = mean(.data$result, na.rm = TRUE)) %>%
+               ungroup()
+ions        <- merge(ions, mean_ions, by = c("lake", "description"))
+ions$result <- ions$result/ions$mean
+
+# Plot
+plot_obj <- ggplot(ions) +
+            geom_line(aes(x = month, 
+                          y = result,
+                          color = description),
+                      size = 1) +
+            facet_grid(~lake) +
+            labs(x = "", y = "%(Jan,Feb) value") +
+            scale_x_continuous(limits = c(1, 12),
+                               expand = c(0,0),
+                               breaks = c(1:12),
+                               labels = c("J", "F", "M", "A", "M", "J", 
+                                          "J", "A", "S", "O", "N", "D")) +
+            scale_y_continuous(breaks = 0.1*c(5:12),
+                               labels = scales::percent_format(accuracy = 1)) +
+            scale_color_brewer(name = "",
+                               palette = "Set2") +
+            theme_bw() + 
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                      size = text_size),
+                  panel.grid.minor = element_blank(),
+                  legend.position = "top")
+plot_obj
+
+```
+
+## Pairwise Comparisons
+
+Pairwise comparisons can be used to further investigate quasi-conservative
+behavior of cations/anions. Lake-water values for semi-conservative ions should
+fall near a dilution line connecting most upgradient groundwater samples with
+precipitation samples.
+
+In these plots, PFL-09 (a well with unusually high cations/anions) is not shown.
+
+### Mg vs. Ca
+
+Here, we're comparing Magnesium vs. Calcium.
+
+```{r MgCa, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_pairs(water_chem, 
+           parameters = c("MAGNESIUM TOTAL RECOVERABLE", 
+                          "CALCIUM TOTAL RECOVERABLE"),
+           text_size = text_size)
+```
+
+
+### Mg vs. Na
+
+Here, we're comparing Magnesium vs. Sodium
+
+```{r MgNa, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_pairs(water_chem, 
+           parameters = c("MAGNESIUM TOTAL RECOVERABLE", 
+                          "SODIUM TOTAL RECOVERABLE"),
+           text_size = text_size)
+```
+
+### Mg vs. K
+
+Here, we're comparing Magnesium vs. Potassium
+
+```{r MgK, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_pairs(water_chem, 
+           parameters = c("MAGNESIUM TOTAL RECOVERABLE", 
+                          "POTASSIUM TOTAL RECOVERABLE"),
+           text_size = text_size)
+```
+
+### Mg vs. Cl
+
+Here, we're comparing Magnesium vs. Chloride
+
+```{r MgCl, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_pairs(water_chem, 
+           parameters = c("MAGNESIUM TOTAL RECOVERABLE", 
+                          "CHLORIDE"),
+           text_size = text_size)
+```
+
+### Mg vs. Alk
+
+Here, we're comparing Magnesium vs. Alkalinity
+
+```{r MgAlk, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
+plot_pairs(water_chem, 
+           parameters = c("MAGNESIUM TOTAL RECOVERABLE", 
+                          "ALKALINITY TOTAL CACO3"),
+           text_size = text_size)
+```
+
+## Calcification
+
+Ok, so now let's see how much calcification we might expect based on the
+approach by McConnaughey et al., 1994. A few notes:
+ 
+ * Units are in meq and mmol, while McConnaughey et al. use ueq and umol (i.e,
+ multiply these by 1000 to compare)
+ * Recall note at top: Alkalinity & Ca are ~50% higher at Pleasant and
+ Plainfield Lakes than they were at Williams Lake. Long Lake is similar to the
+ values seen at Williams Lake.
+ * The text lables represent the difference between the projected Alk/Ca values
+ and the observed values for the lowest point in the summer (Jun for Long, Jul
+ for Plainfield, Aug for Pleasant).
+
+```{r Calc, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=5, fig.align="center"}
+# Calculate calcification
+calcify           <- calculate_calcification()
+colnames(calcify) <- c("lake", "date", "description", 
+                       "Calcification (mmol/L/yr)", "Lake (meq/L)")
+
+# Rearrange and rename
+melt_calcify <- melt(calcify, id.vars = c("date", "lake", "description"))
+melt_calcify$description <- str_replace_all(melt_calcify$description, 
+                                           "ALKALINITY TOTAL CACO3", 
+                                           "Alkalinity")
+melt_calcify$description <- str_replace_all(melt_calcify$description, 
+                                           "CALCIUM TOTAL RECOVERABLE", 
+                                           "Calcium")
+melt_calcify$variable <- factor(melt_calcify$variable, 
+                               levels = c("Lake (meq/L)", "Calcification (mmol/L/yr)"))
+
+predictions <- NULL
+for (pred_date in c("06-01-2019", "07-01-2019", "08-01-2019")) {
+this_date <- melt_calcify %>%
+             filter(.data$date <= as_datetime(mdy("02-28-2019")),
+                    .data$variable == "Lake (meq/L)") %>%
+             group_by(.data$lake, .data$description) %>%
+             do(lm(value ~ date, data = .) %>%
+                  predict(., data.frame(date = as_datetime(mdy(pred_date)))) %>%
+                  data_frame(date = as_datetime(mdy(pred_date)), value = .))
+predictions <- bind_rows(predictions, this_date)
+}
+predictions$variable <- "Lake (meq/L)"
+predictions <- merge(predictions, 
+                     melt_calcify, 
+                     by = c("date", "lake", "description", "variable"),
+                     all.x = TRUE) %>%
+               mutate(value = round(.data$value.x - .data$value.y, digits = 2),
+                      plot_y = .data$value.y + 0.5*.data$value)
+
+predictions <- predictions %>%
+               filter((.data$date == as_datetime(mdy("06-01-2019")) & 
+                         .data$lake == "Long") |
+                        (.data$date == as_datetime(mdy("07-01-2019")) & 
+                           .data$lake == "Plainfield") |
+                        (.data$date == as_datetime(mdy("08-01-2019")) & 
+                           .data$lake == "Pleasant"))
+
+plot_obj <- ggplot(melt_calcify) +
+            geom_line(aes(x = .data$date, 
+                          y = .data$value,
+                          color = .data$description)) +
+            geom_smooth(data = filter(melt_calcify, 
+                                      .data$variable == "Lake (meq/L)" &
+                                      .data$date <= as_datetime(mdy("02-28-2019"))),
+                        aes(x = .data$date, y = .data$value, group = .data$description),
+                        method = "lm",
+                        se = FALSE,
+                        color = "grey40", 
+                        fullrange = TRUE,
+                        linetype = "dashed",
+                        size = 0.5) +
+            geom_hline(yintercept = 0,
+                       color = "black",
+                       size = 0.3) +
+            geom_text(data = predictions,
+                      aes(x = .data$date,
+                          y = .data$plot_y,
+                          label = .data$value),
+                      family = "Segoe UI Semilight") +
+            facet_grid(variable~lake, scales = "free", switch = "y") +
+            scale_x_datetime(breaks = "2 months",
+                             minor_breaks = "1 month",
+                             date_labels = "%b",
+                             expand = c(0,0)) +
+            scale_y_continuous(expand = c(0,0)) +
+            labs(x = "", y = "", color = "") +
+            theme_bw() +
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                      size = text_size),
+                  legend.position = "top")
+plot_obj
+```
+
+## Next Steps
+
+There's more to do! Immediate next steps include:
+
+  * Convert this estimate of calcification to a mass (kg) and compare with the
+  differences between I-O and Delta Lake on the solute budget plots. Does this
+  explain it?
+  * Meet up to talk this over. How are we feeling? Does this still feel way too high?
+  * Make sure htmls walk through our thought process clearly
+  * Meet w/Paul McGinley to talk through this.
