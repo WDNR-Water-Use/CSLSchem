@@ -15,15 +15,45 @@ library(dplyr)
 library(extrafont)
 library(ggplot2)
 library(reshape2)
+library(kableExtra)
 
 text_size  <- 12
-mass_fluxes <- calculate_solute_balance()
-mass_fluxes <- mass_fluxes %>%
-               group_by(.data$lake, .data$parameter) %>%
-               mutate(pcnt = round(100*.data$mass_kg/
-                             (.data$mass_kg[.data$site_type=="P"]+
-                                .data$mass_kg[.data$site_type=="GWin"]),1)) %>%
-               ungroup()
+mass_fluxes1 <- calculate_solute_balance(annual = TRUE)
+mass_fluxes1 <- mass_fluxes1 %>%
+                group_by(.data$lake, .data$parameter) %>%
+                mutate(pcnt = round(100*.data$mass_kg/
+                              (.data$mass_kg[.data$site_type=="P"]+
+                                 .data$mass_kg[.data$site_type=="GWin"]),1)) %>%
+                ungroup()
+
+mass_fluxes2 <- calculate_solute_balance()
+mass_fluxes2 <- mass_fluxes2 %>%
+                group_by(lake = .data$lake,
+                         parameter = .data$parameter,
+                         site_type = .data$site_type) %>%
+                summarise(mass_kg = sum(.data$mass_kg)) %>%
+                ungroup()
+mass_fluxes2 <- mass_fluxes2 %>%
+                group_by(.data$lake, .data$parameter) %>%
+                mutate(pcnt = round(100*.data$mass_kg/
+                              (.data$mass_kg[.data$site_type=="P"]+
+                                 .data$mass_kg[.data$site_type=="GWin"]),1)) %>%
+                ungroup()
+
+
+mass_fluxes3 <- calculate_solute_balance(chem_tracer = "MAGNESIUM TOTAL RECOVERABLE")
+mass_fluxes3 <- mass_fluxes3 %>%
+                group_by(lake = .data$lake,
+                         parameter = .data$parameter,
+                         site_type = .data$site_type) %>%
+                summarise(mass_kg = sum(.data$mass_kg)) %>%
+                ungroup()
+mass_fluxes3 <- mass_fluxes3 %>%
+                group_by(.data$lake, .data$parameter) %>%
+                mutate(pcnt = round(100*.data$mass_kg/
+                              (.data$mass_kg[.data$site_type=="P"]+
+                                 .data$mass_kg[.data$site_type=="GWin"]),1)) %>%
+                ungroup()
 
 plot_solutes <- function(mass_fluxes, 
                          lake, 
@@ -62,27 +92,82 @@ format_table <- function(mass_fluxes, lake) {
 
 ## Pleasant Lake
 
-```{r psnt, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+### Annual
+
+```{r psnt1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
 lake <- "Pleasant"
-plot_solutes(mass_fluxes, lake, text_size)
-kableExtra::kable(format_table(mass_fluxes, lake), 
+plot_solutes(mass_fluxes1, lake, text_size)
+kableExtra::kable(format_table(mass_fluxes1, lake), 
                   caption = sprintf("Percent of Total Inflow: %s Lake", lake))
 ```
 
+### Monthly (Summed to Annual)
+
+```{r psnt2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+plot_solutes(mass_fluxes2, lake, text_size)
+kableExtra::kable(format_table(mass_fluxes2, lake), 
+                  caption = sprintf("Percent of Total Inflow: %s Lake", lake))
+```
+
+### Monthly (Summed to Annual) w/Mg used for water balance
+
+```{r psnt3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+plot_solutes(mass_fluxes3, lake, text_size)
+kableExtra::kable(format_table(mass_fluxes3, lake), 
+                  caption = sprintf("Percent of Total Inflow: %s Lake", lake))
+```
+
+
 ## Long Lake
 
-```{r long, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+### Annual
+
+```{r long1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
 lake <- "Long"
-plot_solutes(mass_fluxes, lake, text_size)
-kableExtra::kable(format_table(mass_fluxes, lake), 
+plot_solutes(mass_fluxes1, lake, text_size)
+kableExtra::kable(format_table(mass_fluxes1, lake), 
+                  caption = sprintf("Percent of Total Inflow: %s Lake", lake))
+```
+
+### Monthly (Summed to Annual)
+
+```{r long2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+plot_solutes(mass_fluxes2, lake, text_size)
+kableExtra::kable(format_table(mass_fluxes2, lake), 
+                  caption = sprintf("Percent of Total Inflow: %s Lake", lake))
+```
+
+### Monthly (Summed to Annual) w/Mg used for water balance
+
+```{r long3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+plot_solutes(mass_fluxes3, lake, text_size)
+kableExtra::kable(format_table(mass_fluxes3, lake), 
                   caption = sprintf("Percent of Total Inflow: %s Lake", lake))
 ```
 
 ## Plainfield Lake
 
-```{r pfl, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+### Annual
+
+```{r pfl1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
 lake <- "Plainfield"
-plot_solutes(mass_fluxes, lake, text_size)
-kableExtra::kable(format_table(mass_fluxes, lake), 
+plot_solutes(mass_fluxes1, lake, text_size)
+kableExtra::kable(format_table(mass_fluxes1, lake), 
+                  caption = sprintf("Percent of Total Inflow: %s Lake", lake))
+```
+
+### Monthly (Summed to Annual)
+
+```{r pfl2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+plot_solutes(mass_fluxes2, lake, text_size)
+kableExtra::kable(format_table(mass_fluxes2, lake), 
+                  caption = sprintf("Percent of Total Inflow: %s Lake", lake))
+```
+
+### Monthly (Summed to Annual) w/Mg used for water balance
+
+```{r pfl3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+plot_solutes(mass_fluxes3, lake, text_size)
+kableExtra::kable(format_table(mass_fluxes3, lake), 
                   caption = sprintf("Percent of Total Inflow: %s Lake", lake))
 ```

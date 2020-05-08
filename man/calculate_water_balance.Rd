@@ -7,7 +7,7 @@
 calculate_water_balance(
   desired_lakes = c("Pleasant", "Long", "Plainfield"),
   chem_df = CSLSdata::water_chem,
-  chem_tracer = "MAGNESIUM TOTAL RECOVERABLE",
+  chem_tracer = "d18O",
   start_date = "10-01-2018",
   end_date = "09-30-2019",
   annual = FALSE,

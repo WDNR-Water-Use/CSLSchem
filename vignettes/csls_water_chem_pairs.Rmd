@@ -143,8 +143,7 @@ ggplot(plot_df,
 
 ```
 
-```{r next, echo=FALSE, eval=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.height=7}
-
+```{r next, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE, fig.width=10, fig.height=7}
 text_size    <- 12
 lakes        <- c("Pleasant", "Long", "Plainfield")
 pair_names   <- c("MAGNESIUM TOTAL RECOVERABLE",
@@ -152,27 +151,35 @@ pair_names   <- c("MAGNESIUM TOTAL RECOVERABLE",
 water_chem   <- CSLSdata::water_chem
 water_chem   <- water_chem %>%
                 filter(.data$description %in% pair_names,
-                       .data$site_type != "deep") %>%
+                       !.data$site_type %in% c("deep", "precipitation")) %>%
                 mutate(result = as.numeric(.data$result)) %>%
                 select(.data$date, .data$lake, .data$site_type,
                        .data$description, .data$result)
 pairs        <- merge(water_chem, water_chem,
                       by = c("date", "lake", "site_type"))
-colnames(pairs) <- c("date", "lake", "site_type", "Mg", 
-                     "x_val", "Alkalinity", "x_val")
+colnames(pairs) <- c("date", "lake", "site_type", "y_param", 
+                     "y_val", "x_param", "x_val")
 
-pairs <- pairs %>% filter(.data$Mg == "MAGNESIUM TOTAL RECOVERABLE",
-                          .data$Alk == "ALKALINITY TOTAL CACO3") 
+# psnt_fit <- lm(y_val ~ 0 + x_val, data = filter(pairs, lake == "Pleasant"))
+# long_fit <- lm(y_val ~ 0 + x_val, data = filter(pairs, lake == "Long"))
+# pfl_fit  <- lm(y_val ~ 0 + x_val, data = filter(pairs, lake == "Plainfield"))
 
-lake <- "Pleasant"
-plot_df  <- pairs %>% filter(.data$lake %in% c(!!lake, "Precip"))
+plot_df <- pairs %>% 
+           filter(.data$y_param == "MAGNESIUM TOTAL RECOVERABLE",
+                  .data$x_param == "ALKALINITY TOTAL CACO3") 
+
 ggplot(plot_df, 
        aes(x = x_val, y = y_val, color = site_type)) +
               geom_point() +
-              facet_grid(y_param ~ x_param, 
-                         scales = "free",
-                         switch = "y") +
-              stat_smooth(method = "lm", se = FALSE, color = "grey40") +
+              facet_grid(~lake) +
+              # geom_abline(intercept = 0, 
+              #             slope = line_fit$coefficients[1], 
+              #             color = 'black') +
+              geom_smooth(method = lm, 
+                          se = FALSE, 
+                          formula = y ~ 0 + x, 
+                          color = "grey40") +
+              # stat_smooth(method = "lm", se = FALSE, color = "grey40") +
               scale_color_manual(name = "",
                                  breaks = c("precipitation",
                                             "upgradient",
@@ -189,9 +196,10 @@ ggplot(plot_df,
                                             "#B15928",
                                             "#B2DF8A",
                                             "#E31A1C")) +
-    labs(x = "", y = "", title = sprintf("%s Lake", lake)) +
+    labs(x = "Alkalinity", y = "Magnesium", title = "") +
     theme_bw() +
     theme(text = element_text(family = "Segoe UI Semilight",
                               size = text_size),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank())
+```
