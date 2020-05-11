@@ -16,6 +16,7 @@ library(extrafont)
 library(ggplot2)
 library(reshape2)
 library(kableExtra)
+library(NISTunits)
 
 text_size  <- 12
 mass_fluxes1 <- calculate_solute_balance(annual = TRUE)
