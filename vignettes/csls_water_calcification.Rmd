@@ -101,16 +101,16 @@ plot_obj
 
 <br>
 
-Next, let's look at the average monthly values of the major cations (Mg++, Ca++,
-Na+, and K+) realative to the mean Jan/Feb values. The goal of this is to
-visually identify cations which drop during spring dilution, stabilize over the
-summer, then rise over winter. This would indicate that, to a first
-approximation, seasonal fluctuations in those cations reflect dilution.
+Next, let's look at monthly values of the major cations (Mg++, Ca++, Na+, and
+K+) for Oct 2018 - Sept 2019 realative to the mean Jan/Feb values. The goal of
+this is to visually identify cations which drop during spring dilution,
+stabilize over the summer, then rise over winter. This would indicate that, to a
+first approximation, seasonal fluctuations in those cations reflect dilution.
 
 <br>
 
-None of the cations are very conservative, but **at a first approximation, Mg is
-the most conservative** in all lakes.
+None of the cations are very conservative, but **at a first approximation, Mg or
+Na are the most conservative** in all lakes.
 
 ```{r cations, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
 # Filter to only anions/cations of interest
@@ -146,16 +146,13 @@ for (i in 1:length(parameters)) {
 
 # Find monthly average values across entire timeseries
 ions <- ions %>%
-        group_by(lake = .data$lake,
-                 description = .data$description,
-                 month = month(.data$date)) %>%
-        summarise(result = mean(.data$result, na.rm = TRUE)) %>%
-        ungroup() %>%
-        select(.data$lake, .data$month, .data$description, .data$result)
+        filter(.data$date >= start_date,
+               .data$date <= end_date) %>%
+        select(.data$lake, .data$date, .data$description, .data$result)
 
 # Compare to mean Jan/Feb values
 mean_ions   <- ions %>%
-               filter(.data$month %in% c(1, 2)) %>%
+               filter(month(.data$date) %in% c(1, 2)) %>%
                group_by(.data$lake, .data$description) %>%
                summarise(mean = mean(.data$result, na.rm = TRUE)) %>%
                ungroup()
@@ -164,17 +161,16 @@ ions$result <- ions$result/ions$mean
 
 # Plot
 plot_obj <- ggplot(ions) +
-            geom_line(aes(x = month, 
+            geom_line(aes(x = date, 
                           y = result,
                           color = description),
                       size = 1) +
             facet_grid(~lake) +
             labs(x = "", y = "%(Jan,Feb) value") +
-            scale_x_continuous(limits = c(1, 12),
-                               expand = c(0,0),
-                               breaks = c(1:12),
-                               labels = c("J", "F", "M", "A", "M", "J", 
-                                          "J", "A", "S", "O", "N", "D")) +
+            scale_x_datetime(expand = c(0,0),
+                             breaks = "2 months",
+                             minor_breaks = "1 month",
+                             date_labels = "%b") +
             scale_y_continuous(breaks = 0.1*c(5:12),
                                labels = scales::percent_format(accuracy = 1)) +
             scale_color_brewer(name = "",
@@ -182,7 +178,6 @@ plot_obj <- ggplot(ions) +
             theme_bw() + 
             theme(text = element_text(family = "Segoe UI Semilight",
                                       size = text_size),
-                  panel.grid.minor = element_blank(),
                   legend.position = "top")
 plot_obj
 
@@ -292,14 +287,16 @@ this_date <- melt_calcify %>%
              group_by(.data$lake, .data$description) %>%
              do(lm(value ~ date, data = .) %>%
                   predict(., data.frame(date = as_datetime(mdy(pred_date)))) %>%
-                  data_frame(date = as_datetime(mdy(pred_date)), value = .))
+                  data_frame(date = as_datetime(mdy(pred_date)), value = .)) %>%
+             ungroup()
 predictions <- bind_rows(predictions, this_date)
 }
 predictions$variable <- "Lake (meq/L)"
 predictions <- merge(predictions, 
                      melt_calcify, 
                      by = c("date", "lake", "description", "variable"),
-                     all.x = TRUE) %>%
+                     all.x = TRUE)
+predictions <- predictions %>%
                mutate(value = round(.data$value.x - .data$value.y, digits = 2),
                       plot_y = .data$value.y + 0.5*.data$value)
 
@@ -347,13 +344,129 @@ plot_obj <- ggplot(melt_calcify) +
 plot_obj
 ```
 
-## Next Steps
+## Compare to Solute Mass Balance
 
-There's more to do! Immediate next steps include:
+Here's how the caclulated calcification ("Cal", mean of Ca & Alk approaches)
+compares to the rest of the calcium solute balance.
 
-  * Convert this estimate of calcification to a mass (kg) and compare with the
-  differences between I-O and Delta Lake on the solute budget plots. Does this
-  explain it?
-  * Meet up to talk this over. How are we feeling? Does this still feel way too high?
-  * Make sure htmls walk through our thought process clearly
-  * Meet w/Paul McGinley to talk through this.
+<br>
+
+It's far lower 
+
+```{r Calc02, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+# Multiply calcification rates by lake volume
+calcify      <- calculate_calcification() %>%
+                select(.data$date, .data$lake, .data$description, .data$calcification)
+water_fluxes <- calculate_water_balance() %>%
+                select(.data$date, .data$lake, .data$mean_vol_m3)
+calcify      <- merge(calcify, water_fluxes, by = c("date", "lake"), all.x = TRUE)
+calcify$mass_kg <- calcify$calcification*calcify$mean_vol_m3
+
+# Convert units involved in that calculation
+mgTOmmol <- CSLSchem::mgTOmeq$mgTOmmol[mgTOmeq$description == "CALCIUM TOTAL RECOVERABLE"]
+calcify$mass_kg <- calcify$mass_kg*1000/(12*mgTOmmol*1000*1000)
+calcify  <- calcify %>%
+            group_by(.data$date, .data$lake) %>%
+            summarise(mass_kg = mean(.data$mass_kg)) %>%
+            ungroup() %>% 
+            mutate(parameter = "CALCIUM TOTAL RECOVERABLE",
+                   site_type = "Cal")
+
+# Combine with other mass fluxes
+mass_fluxes <- calculate_solute_balance()
+mass_fluxes <- mass_fluxes %>%
+               group_by(lake = .data$lake,
+                        parameter = .data$parameter,
+                        site_type = .data$site_type) %>%
+               summarise(mass_kg = sum(.data$mass_kg)) %>%
+               ungroup()
+mass_fluxes <- mass_fluxes %>%
+               group_by(.data$lake, .data$parameter) %>%
+               mutate(pcnt = round(100*.data$mass_kg/
+                                     (.data$mass_kg[.data$site_type=="P"]+
+                                        .data$mass_kg[.data$site_type=="GWin"]),1)) %>%
+               ungroup()
+
+calcify  <- bind_rows(mass_fluxes, calcify) %>%
+            filter(.data$parameter == "CALCIUM TOTAL RECOVERABLE")
+calcify$site_type <- factor(calcify$site_type,
+                            levels = c("P", "GWin", "GWout", "I-O", 
+                                       "Delta Lake", "Cal"),
+                            labels = c("P", "GWin", "GWout", "I-O", 
+                                       expression(paste(Delta,"Lake")), 
+                                       "Cal"))
+plot_obj <- ggplot(calcify) +
+            geom_col(aes(x = .data$site_type,
+                         y = .data$mass_kg,
+                         fill = .data$site_type)) +
+            facet_wrap(~lake, scales = "free") +
+            labs(x = "", y = "Solute Mass (kg)") +
+            scale_fill_manual(name = "",
+                              values = c("#1F78B4", "#33A02C", "#B2DF8A", 
+                                         "#FB9A99", "#E31A1C", "#FDBF6F")) +
+            theme_bw() +
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                      size = text_size),
+                  panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(),
+                  legend.position = "top")
+plot_obj
+```
+
+<br>
+
+```{r Calc03, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+# Multiply lost calcium by lake volume
+Ca_loss <- predictions %>%
+           group_by(.data$lake) %>%
+           summarise(loss_meqL = mean(.data$value)) %>%
+           ungroup()
+water_fluxes <- calculate_water_balance(annual = TRUE) %>%
+                select(.data$lake, .data$mean_vol_m3)
+Ca_loss      <- merge(Ca_loss, water_fluxes)
+Ca_loss$parameter <- "CALCIUM TOTAL RECOVERABLE"
+Ca_loss$site_type <- "Ca Loss"
+Ca_loss$mass_kg <- Ca_loss$loss_meqL*Ca_loss$mean_vol_m3
+
+# Convert units involved in that calculation
+mgTOmeq <- CSLSchem::mgTOmeq
+mgTOmeq <- mgTOmeq$mgTOmeq[mgTOmeq$description == "CALCIUM TOTAL RECOVERABLE"]
+Ca_loss$mass_kg <- Ca_loss$mass_kg*1000/(mgTOmeq*1000*1000)
+
+# Combine with other mass fluxes
+mass_fluxes <- calculate_solute_balance()
+mass_fluxes <- mass_fluxes %>%
+               group_by(lake = .data$lake,
+                        parameter = .data$parameter,
+                        site_type = .data$site_type) %>%
+               summarise(mass_kg = sum(.data$mass_kg)) %>%
+               ungroup()
+mass_fluxes <- mass_fluxes %>%
+               group_by(.data$lake, .data$parameter) %>%
+               mutate(pcnt = round(100*.data$mass_kg/
+                                     (.data$mass_kg[.data$site_type=="P"]+
+                                        .data$mass_kg[.data$site_type=="GWin"]),1)) %>%
+               ungroup()
+
+Ca_loss  <- bind_rows(mass_fluxes, Ca_loss) %>%
+            filter(.data$parameter == "CALCIUM TOTAL RECOVERABLE")
+Ca_loss$site_type <- factor(Ca_loss$site_type,
+                            levels = c("P", "GWin", "GWout", "I-O", 
+                                       "Delta Lake", "Ca Loss"))
+plot_obj <- ggplot(Ca_loss) +
+            geom_col(aes(x = .data$site_type,
+                         y = .data$mass_kg,
+                         fill = .data$site_type)) +
+            facet_wrap(~lake, scales = "free") +
+            labs(x = "", y = "Solute Mass (kg)") +
+            scale_fill_manual(name = "",
+                              values = c("#1F78B4", "#33A02C", "#B2DF8A", 
+                                         "#FB9A99", "#E31A1C", "#FDBF6F")) +
+            theme_bw() +
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                      size = text_size),
+                  panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(),
+                  legend.position = "top")
+plot_obj
+```

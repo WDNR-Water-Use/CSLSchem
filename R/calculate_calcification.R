@@ -108,10 +108,10 @@ calculate_calcification <- function(desired_lakes = c("Pleasant", "Long", "Plain
                      .data$date <= end_date) %>%
               arrange(.data$date) %>%
               group_by(.data$lake) %>%
-              mutate(result = mean(.data$result*.data$mgTOmmol, na.rm = TRUE)/
-                              .data$result*.data$mgTOmmol,
-                     site_type = "Mg_ratio") %>%
+              mutate(mean_Mg = mean(.data$result, na.rm = TRUE)) %>%
               ungroup() %>%
+              mutate(result = mean_Mg/.data$result,
+                     site_type = "Mg_ratio") %>%
               select(.data$lake, .data$date, .data$site_type, .data$result)
   Mg_ratio$description = "CALCIUM TOTAL RECOVERABLE"
   Mg_ratio <- rbind(Mg_ratio,
