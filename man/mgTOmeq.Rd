@@ -9,7 +9,7 @@ A data frame with the following columns:
 \describe{
  \item{description}{dnr parameter description}
  \item{mgTOmeq}{multiply value in mg/L by this value to yield meq/L}
- \item{mgTOmol}{multiply value in mg/L by this value to yield molarity}
+ \item{mgTOmmol}{multiply value in mg/L by this value to yield molarity}
  }
 }
 \usage{

@@ -252,21 +252,27 @@ plot_pairs(water_chem,
 
 Ok, so now let's see how much calcification we might expect based on the
 approach by McConnaughey et al., 1994. A few notes:
- 
- * Units are in meq and mmol, while McConnaughey et al. use ueq and umol (i.e,
- multiply these by 1000 to compare)
- * Recall note at top: Alkalinity & Ca are ~50% higher at Pleasant and
- Plainfield Lakes than they were at Williams Lake. Long Lake is similar to the
- values seen at Williams Lake.
- * The text lables represent the difference between the projected Alk/Ca values
- and the observed values for the lowest point in the summer (Jun for Long, Jul
- for Plainfield, Aug for Pleasant).
+
+ * Regressions cover the period Oct-Apr, as in McConnaughey et al., but in our
+ lakes, it looks like Ca/Alk only increase Oct-Feb. Changing the time period
+ used for the regression line would increase these differences. 
+ * The slope of the regression line for Williams Lake was ~120 uM/yr, these are
+ ~126 uM/yr (Long), 207 uM/yr (Pleasant), and 322 uM/yr (Plainfield).
+ * The text lables represent the difference (in uM) between the projected Alk/Ca
+ values and the observed values for the lowest point in the summer (Jun for
+ Long, Jul for Plainfield, Aug for Pleasant). The difference at Williams Lake
+ was ~160 uM.
+ * I've gotten all turned around on what "dilution-normalized" means in terms of
+ lake concentrations. These values are not transformed - they are simply the
+ Ca/Alk concentrations in the lake.
 
 ```{r Calc, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=5, fig.align="center"}
 # Calculate calcification
-calcify           <- calculate_calcification()
-colnames(calcify) <- c("lake", "date", "description", 
-                       "Calcification (mmol/L/yr)", "Lake (meq/L)")
+calcify <- calculate_calcification() %>%
+           select(.data$date, .data$lake, .data$description,
+                  .data$calcification, .data$X_lake)
+colnames(calcify) <- c("date", "lake", "description", 
+                       "Calcification (uM/yr)", "Lake (uM)")
 
 # Rearrange and rename
 melt_calcify <- melt(calcify, id.vars = c("date", "lake", "description"))
@@ -277,13 +283,13 @@ melt_calcify$description <- str_replace_all(melt_calcify$description,
                                            "CALCIUM TOTAL RECOVERABLE", 
                                            "Calcium")
 melt_calcify$variable <- factor(melt_calcify$variable, 
-                               levels = c("Lake (meq/L)", "Calcification (mmol/L/yr)"))
+                               levels = c("Lake (uM)", "Calcification (uM/yr)"))
 
 predictions <- NULL
 for (pred_date in c("06-01-2019", "07-01-2019", "08-01-2019")) {
 this_date <- melt_calcify %>%
-             filter(.data$date <= as_datetime(mdy("02-28-2019")),
-                    .data$variable == "Lake (meq/L)") %>%
+             filter(.data$date <= as_datetime(mdy("04-30-2019")),
+                    .data$variable == "Lake (uM)") %>%
              group_by(.data$lake, .data$description) %>%
              do(lm(value ~ date, data = .) %>%
                   predict(., data.frame(date = as_datetime(mdy(pred_date)))) %>%
@@ -291,7 +297,7 @@ this_date <- melt_calcify %>%
              ungroup()
 predictions <- bind_rows(predictions, this_date)
 }
-predictions$variable <- "Lake (meq/L)"
+predictions$variable <- "Lake (uM)"
 predictions <- merge(predictions, 
                      melt_calcify, 
                      by = c("date", "lake", "description", "variable"),
@@ -308,12 +314,24 @@ predictions <- predictions %>%
                         (.data$date == as_datetime(mdy("08-01-2019")) & 
                            .data$lake == "Pleasant"))
 
+slope_df <- unique(melt_calcify[,c("lake", "description")])
+slope_df$slope <- NA
+for (i in 1:nrow(slope_df)) {
+  lm_df <- melt_calcify %>% 
+           filter(.data$date <= as_datetime(mdy("04-30-2019")),
+                  .data$lake == slope_df$lake[i],
+                  .data$description == slope_df$description[i],
+                    .data$variable == "Lake (uM)")
+    slope_df$slope[i] <- lm(value ~ date, data = lm_df)$coefficients[2]*
+                         NISTunits::NISTyearTOsec(1)
+}
+
 plot_obj <- ggplot(melt_calcify) +
             geom_line(aes(x = .data$date, 
                           y = .data$value,
                           color = .data$description)) +
             geom_smooth(data = filter(melt_calcify, 
-                                      .data$variable == "Lake (meq/L)" &
+                                      .data$variable == "Lake (uM)" &
                                       .data$date <= as_datetime(mdy("02-28-2019"))),
                         aes(x = .data$date, y = .data$value, group = .data$description),
                         method = "lm",
@@ -347,11 +365,11 @@ plot_obj
 ## Compare to Solute Mass Balance
 
 Here's how the caclulated calcification ("Cal", mean of Ca & Alk approaches)
-compares to the rest of the calcium solute balance.
+compares to the rest of the calcium solute balance. 
 
 <br>
 
-It's far lower 
+Net calcification rates are near-zero due to the negative rates in the winter.
 
 ```{r Calc02, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
 # Multiply calcification rates by lake volume
@@ -360,11 +378,11 @@ calcify      <- calculate_calcification() %>%
 water_fluxes <- calculate_water_balance() %>%
                 select(.data$date, .data$lake, .data$mean_vol_m3)
 calcify      <- merge(calcify, water_fluxes, by = c("date", "lake"), all.x = TRUE)
-calcify$mass_kg <- calcify$calcification*calcify$mean_vol_m3
+calcify$mass_umol <- calcify$calcification*calcify$mean_vol_m3/1000
 
 # Convert units involved in that calculation
-mgTOmmol <- CSLSchem::mgTOmeq$mgTOmmol[mgTOmeq$description == "CALCIUM TOTAL RECOVERABLE"]
-calcify$mass_kg <- calcify$mass_kg*1000/(12*mgTOmmol*1000*1000)
+ugTOumol <- CSLSchem::mgTOmeq$mgTOmmol[mgTOmeq$description == "CALCIUM TOTAL RECOVERABLE"]
+calcify$mass_kg <- calcify$mass_umol/(12*ugTOumol*1000*1000*1000)
 calcify  <- calcify %>%
             group_by(.data$date, .data$lake) %>%
             summarise(mass_kg = mean(.data$mass_kg)) %>%
@@ -391,10 +409,7 @@ calcify  <- bind_rows(mass_fluxes, calcify) %>%
             filter(.data$parameter == "CALCIUM TOTAL RECOVERABLE")
 calcify$site_type <- factor(calcify$site_type,
                             levels = c("P", "GWin", "GWout", "I-O", 
-                                       "Delta Lake", "Cal"),
-                            labels = c("P", "GWin", "GWout", "I-O", 
-                                       expression(paste(Delta,"Lake")), 
-                                       "Cal"))
+                                       "Delta Lake", "Cal"))
 plot_obj <- ggplot(calcify) +
             geom_col(aes(x = .data$site_type,
                          y = .data$mass_kg,
@@ -415,23 +430,32 @@ plot_obj
 
 <br>
 
-```{r Calc03, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+I think McConnaughey didn't actually sum the monthly calcification rates to get
+at a new calcification rate though - it seems like they just used that
+difference from the regression line. They accounted for fall dissolution (and
+I'm not, so my values represent an overestimate), but here's what the mass
+equivalent of calcification would be if we use that difference.
+
+<br>
+
+Still near-zero.
+
+```{r Calc03, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
 # Multiply lost calcium by lake volume
 Ca_loss <- predictions %>%
            group_by(.data$lake) %>%
-           summarise(loss_meqL = mean(.data$value)) %>%
+           summarise(loss_uM = mean(.data$value)) %>%
            ungroup()
 water_fluxes <- calculate_water_balance(annual = TRUE) %>%
                 select(.data$lake, .data$mean_vol_m3)
 Ca_loss      <- merge(Ca_loss, water_fluxes)
 Ca_loss$parameter <- "CALCIUM TOTAL RECOVERABLE"
 Ca_loss$site_type <- "Ca Loss"
-Ca_loss$mass_kg <- Ca_loss$loss_meqL*Ca_loss$mean_vol_m3
+Ca_loss$mass_umol <- Ca_loss$loss_uM*Ca_loss$mean_vol_m3/1000
 
 # Convert units involved in that calculation
-mgTOmeq <- CSLSchem::mgTOmeq
-mgTOmeq <- mgTOmeq$mgTOmeq[mgTOmeq$description == "CALCIUM TOTAL RECOVERABLE"]
-Ca_loss$mass_kg <- Ca_loss$mass_kg*1000/(mgTOmeq*1000*1000)
+ugTOumol <- CSLSchem::mgTOmeq$mgTOmmol[mgTOmeq$description == "CALCIUM TOTAL RECOVERABLE"]
+Ca_loss$mass_kg <- Ca_loss$mass_umol/(12*ugTOumol*1000*1000*1000)
 
 # Combine with other mass fluxes
 mass_fluxes <- calculate_solute_balance()
