@@ -11,8 +11,7 @@ calculate_solute_balance(
   solutes = c("CALCIUM TOTAL RECOVERABLE", "CHLORIDE", "MAGNESIUM TOTAL RECOVERABLE",
     "NITROGEN NH3-N DISS", "SODIUM TOTAL RECOVERABLE", "SULFATE TOTAL"),
   start_date = "10-01-2018",
-  end_date = "09-30-2019",
-  annual = FALSE
+  end_date = "09-30-2019"
 )
 }
 \arguments{
@@ -39,10 +38,6 @@ TOTAL RECOVERABLE", "SULFATE TOTAL").}
 
 \item{end_date}{end date of analysis. Defaults to end of WY2019
 ("2019-09-30").}
-
-\item{annual}{logical defaults to FALSE to calculate solute balance on a
-monthly time step. If TRUE, calculates for entire timeseries
-(start_date to end_date), assumed to be one year.}
 }
 \value{
 mass_fluxes

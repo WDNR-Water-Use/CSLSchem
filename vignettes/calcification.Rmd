@@ -1,5 +1,5 @@
 ---
-title: "CSLS Water Chem Visualization: Calcification"
+title: "CSLS Calcification"
 output: 
   rmarkdown::html_vignette:
     toc: true
@@ -30,16 +30,25 @@ fig_width  <- 6.5
 fig_height <- 4
 ```
 
+## Overview
+
+Here, we're trying to replicate the approach for calculating lake calcification
+rates from McConnoughey et al. (1994). However, our net annual rates are
+near-zero, which is difficult to square with our solute mass balances. Are we
+misunderstanding something about how to calculate calcification? Are we perhaps
+running into trouble because Mg does not behave conservatively enough at our
+study lakes?
+
 ## Seasonal Variations in Anions
 
 First, let's look at the data we have about the concentration of major cations
-and anions at each lake over time.
+and anions at each lake over time (as in Fig. 2 in McConnaughey et al., 1994).
 
 <br>
 
-Note that values for Alkalinity, Calcium, and Magnesium are **~50% higher** at
+Note that values for Alkalinity, Calcium, and Magnesium are ~50% higher at
 Pleasant and Plainfield Lakes than in McConnaughey et al., while Long Lake is
-similar to the values they present for Williams Lake.
+similar but slighly lower than the values they present for Williams Lake.
 
 ```{r cations01, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
 # Filter to only anions/cations of interest
@@ -65,7 +74,7 @@ plot_names <- c("Mg", "Alkalinity", "Ca", "Na", "SO4", "Cl")
 
 # Convert from mg/L to meq/L
 ions        <- merge(C_solutes, mgTOmeq, all.x = TRUE)
-ions$result <- ions$result*ions$mgTOmeq
+ions$result <- ions$result*ions$mgTOmeq*1000
 ions$lake   <- factor(ions$lake, levels = lakes)
 
 # Sub long descriptions with shorter names for plotting
@@ -85,7 +94,7 @@ plot_obj <- ggplot(ions) +
                           y = .data$result,
                           color = description)) +
             facet_grid(~lake) +
-            labs(x = "", y = "meq/L") +
+            labs(x = "", y = "ueq/L") +
             scale_x_datetime(breaks = "6 months",
                              minor_breaks = "2 months",
                              date_labels = "%b-%y") +
@@ -102,10 +111,11 @@ plot_obj
 <br>
 
 Next, let's look at monthly values of the major cations (Mg++, Ca++, Na+, and
-K+) for Oct 2018 - Sept 2019 realative to the mean Jan/Feb values. The goal of
-this is to visually identify cations which drop during spring dilution,
-stabilize over the summer, then rise over winter. This would indicate that, to a
-first approximation, seasonal fluctuations in those cations reflect dilution.
+K+) for Oct 2018 - Sept 2019 realative to the mean Jan/Feb values (as in Fig. 3
+in McConnaughey et al., 1994). The goal of this is to visually identify cations
+which drop during spring dilution, stabilize over the summer, then rise over
+winter. This would indicate that, to a first approximation, seasonal
+fluctuations in those cations reflect dilution.
 
 <br>
 
@@ -186,15 +196,18 @@ plot_obj
 ## Pairwise Comparisons
 
 Pairwise comparisons can be used to further investigate quasi-conservative
-behavior of cations/anions. Lake-water values for semi-conservative ions should
-fall near a dilution line connecting most upgradient groundwater samples with
-precipitation samples.
+behavior of cations/anions (e.g., Fig. 4 and Fig. 6 in McConnaughey et al.,
+1994). Lake-water values for semi-conservative ions should fall near a dilution
+line connecting most upgradient groundwater samples with precipitation samples.
 
 In these plots, PFL-09 (a well with unusually high cations/anions) is not shown.
 
 ### Mg vs. Ca
 
-Here, we're comparing Magnesium vs. Calcium.
+Precipitation and groundwater samples lie along a nearly 1:1 line, with lake
+samples falling slightly below (Ca is slightly lower than Mg) for Pleasant Lake.
+This is what we expect to see with calcification. Long Lake and Plainfield Lake
+do not show as much evidence of calcification.
 
 ```{r MgCa, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
 plot_pairs(water_chem, 
@@ -206,7 +219,9 @@ plot_pairs(water_chem,
 
 ### Mg vs. Na
 
-Here, we're comparing Magnesium vs. Sodium
+If we assume Mg is semi-conservative, then Na is not. Long Lake and especially
+Plainfield also show evidence of an additional source of Na to the lake (likely
+explanation: road salt).
 
 ```{r MgNa, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
 plot_pairs(water_chem, 
@@ -217,7 +232,8 @@ plot_pairs(water_chem,
 
 ### Mg vs. K
 
-Here, we're comparing Magnesium vs. Potassium
+If we assume Mg is semi-conservative, then K is not. Long and Plainfield Lakes
+again show signs of an unaccounted-for source of potassium to the lake.
 
 ```{r MgK, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
 plot_pairs(water_chem, 
@@ -228,7 +244,9 @@ plot_pairs(water_chem,
 
 ### Mg vs. Cl
 
-Here, we're comparing Magnesium vs. Chloride
+If we assume Mg is semi-conservative, then Cl is not. In Long Lake and
+especially Plainfield Lake, there appears to be an unaccounted-for source of
+chloride to the lake (likely explanation: road salt).
 
 ```{r MgCl, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
 plot_pairs(water_chem, 
@@ -239,7 +257,8 @@ plot_pairs(water_chem,
 
 ### Mg vs. Alk
 
-Here, we're comparing Magnesium vs. Alkalinity
+As in the Mg:Ca plots, calcification should cause the lake to fall slightly
+below the regression line (as in Fig. 6, McConnaughey et al. (1994)).
 
 ```{r MgAlk, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
 plot_pairs(water_chem, 
@@ -250,23 +269,54 @@ plot_pairs(water_chem,
 
 ## Calcification
 
-Ok, so now let's see how much calcification we might expect based on the
-approach by McConnaughey et al., 1994. A few notes:
- 
- * Units are in meq and mmol, while McConnaughey et al. use ueq and umol (i.e,
- multiply these by 1000 to compare)
- * Recall note at top: Alkalinity & Ca are ~50% higher at Pleasant and
- Plainfield Lakes than they were at Williams Lake. Long Lake is similar to the
- values seen at Williams Lake.
- * The text lables represent the difference between the projected Alk/Ca values
- and the observed values for the lowest point in the summer (Jun for Long, Jul
- for Plainfield, Aug for Pleasant).
+Ok, so let's go with Mg as our "conservative" solute! Now let's see how much
+calcification we might expect based on Eq. 7 in McConnaughey et al., 1994. The
+equation is written as:
+
+\begin{align}
+\tag{1}
+calcification = -\frac{d}{dt}[Ca]\frac{Mg_{avg}}{Mg} + GW(Ca)
+\end{align}
+
+Based on their discussion of groundwater chemical fluxes on page 1327, we
+interpreted this as:
+
+\begin{align}
+\tag{2}
+calcification = -\frac{d}{dt}[Ca_{lake}]\frac{[Mg_{lake,avg}]}{[Mg_{lake}]} + \frac{\frac{[Ca_{GW}]}{[Mg_{GW}]}[Mg_{lake}]}{V_{lake}/GW_{in}} - \frac{\frac{[Ca_{lake}]}{[Mg_{lake}]}[Mg_{lake}]}{V_{lake}/GW_{out}}
+\end{align}
+
+where $V_{lake}$ is the lake volume, $GW_{in}$ is the annual groundwater inflow
+rate, and $GW_{out}$ is the annual groundwater outflow rate. However, we are not
+sure this is a correct interpretation.
+
+<br>
+
+With our best interpretation of calcification in hand, we set out to visualize
+the same information as is in Fig. 5 of McConnaughey et al. (1994). Notes about
+this figure:
+
+  * Regression lines of Ca & Alk cover the period Oct-Apr, as in McConnaughey et al.
+  * The slope of the regression line for Williams Lake was ~120 uM/yr, these are
+  ~126 uM/yr (Long), 207 uM/yr (Pleasant), and 322 uM/yr (Plainfield).
+  * The difference between projected Ca & Alk values and actual observed summer 
+  values was ~160 uM for Williams Lake.
+  * McConnaughey et al. regularly mention that their values are "dilution
+  normalized". I'm not sure what that means; these lake concentrations are not
+  transformed at all.
+
+Overall, these calcification rates seem to come from the same planet as the
+rates in McConnaughey et al. (1994). Rates are a bit higher at Pleasant Lake and
+Plainfield Lake than at Williams Lake; Long Lake is a little below what was
+calculated for Williams Lake.
 
 ```{r Calc, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=5, fig.align="center"}
 # Calculate calcification
-calcify           <- calculate_calcification()
-colnames(calcify) <- c("lake", "date", "description", 
-                       "Calcification (mmol/L/yr)", "Lake (meq/L)")
+calcify <- calculate_calcification() %>%
+           select(.data$date, .data$lake, .data$description,
+                  .data$calcification, .data$X_lake)
+colnames(calcify) <- c("date", "lake", "description", 
+                       "Calcification (uM/yr)", "Lake (uM)")
 
 # Rearrange and rename
 melt_calcify <- melt(calcify, id.vars = c("date", "lake", "description"))
@@ -277,13 +327,13 @@ melt_calcify$description <- str_replace_all(melt_calcify$description,
                                            "CALCIUM TOTAL RECOVERABLE", 
                                            "Calcium")
 melt_calcify$variable <- factor(melt_calcify$variable, 
-                               levels = c("Lake (meq/L)", "Calcification (mmol/L/yr)"))
+                               levels = c("Lake (uM)", "Calcification (uM/yr)"))
 
 predictions <- NULL
 for (pred_date in c("06-01-2019", "07-01-2019", "08-01-2019")) {
 this_date <- melt_calcify %>%
-             filter(.data$date <= as_datetime(mdy("02-28-2019")),
-                    .data$variable == "Lake (meq/L)") %>%
+             filter(.data$date <= as_datetime(mdy("04-30-2019")),
+                    .data$variable == "Lake (uM)") %>%
              group_by(.data$lake, .data$description) %>%
              do(lm(value ~ date, data = .) %>%
                   predict(., data.frame(date = as_datetime(mdy(pred_date)))) %>%
@@ -291,7 +341,7 @@ this_date <- melt_calcify %>%
              ungroup()
 predictions <- bind_rows(predictions, this_date)
 }
-predictions$variable <- "Lake (meq/L)"
+predictions$variable <- "Lake (uM)"
 predictions <- merge(predictions, 
                      melt_calcify, 
                      by = c("date", "lake", "description", "variable"),
@@ -308,12 +358,24 @@ predictions <- predictions %>%
                         (.data$date == as_datetime(mdy("08-01-2019")) & 
                            .data$lake == "Pleasant"))
 
+slope_df <- unique(melt_calcify[,c("lake", "description")])
+slope_df$slope <- NA
+for (i in 1:nrow(slope_df)) {
+  lm_df <- melt_calcify %>% 
+           filter(.data$date <= as_datetime(mdy("04-30-2019")),
+                  .data$lake == slope_df$lake[i],
+                  .data$description == slope_df$description[i],
+                    .data$variable == "Lake (uM)")
+    slope_df$slope[i] <- lm(value ~ date, data = lm_df)$coefficients[2]*
+                         NISTunits::NISTyearTOsec(1)
+}
+
 plot_obj <- ggplot(melt_calcify) +
             geom_line(aes(x = .data$date, 
                           y = .data$value,
                           color = .data$description)) +
             geom_smooth(data = filter(melt_calcify, 
-                                      .data$variable == "Lake (meq/L)" &
+                                      .data$variable == "Lake (uM)" &
                                       .data$date <= as_datetime(mdy("02-28-2019"))),
                         aes(x = .data$date, y = .data$value, group = .data$description),
                         method = "lm",
@@ -346,25 +408,23 @@ plot_obj
 
 ## Compare to Solute Mass Balance
 
-Here's how the caclulated calcification ("Cal", mean of Ca & Alk approaches)
-compares to the rest of the calcium solute balance.
+So now, given our calculated monthly calcification rates, can we turn that into
+a mass flux of Ca lost to calcification? Unfortunately, when we simply sum the
+rates and convert from uM to mg/L, net calcification rates are near-zero due to
+the negative rates in the winter.
 
-<br>
-
-It's far lower 
-
-```{r Calc02, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+```{r Calc02, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=3.5, fig.align="center"}
 # Multiply calcification rates by lake volume
 calcify      <- calculate_calcification() %>%
                 select(.data$date, .data$lake, .data$description, .data$calcification)
 water_fluxes <- calculate_water_balance() %>%
                 select(.data$date, .data$lake, .data$mean_vol_m3)
 calcify      <- merge(calcify, water_fluxes, by = c("date", "lake"), all.x = TRUE)
-calcify$mass_kg <- calcify$calcification*calcify$mean_vol_m3
+calcify$mass_umol <- calcify$calcification*calcify$mean_vol_m3/1000
 
 # Convert units involved in that calculation
-mgTOmmol <- CSLSchem::mgTOmeq$mgTOmmol[mgTOmeq$description == "CALCIUM TOTAL RECOVERABLE"]
-calcify$mass_kg <- calcify$mass_kg*1000/(12*mgTOmmol*1000*1000)
+ugTOumol <- CSLSchem::mgTOmeq$mgTOmmol[mgTOmeq$description == "CALCIUM TOTAL RECOVERABLE"]
+calcify$mass_kg <- calcify$mass_umol/(12*ugTOumol*1000*1000*1000)
 calcify  <- calcify %>%
             group_by(.data$date, .data$lake) %>%
             summarise(mass_kg = mean(.data$mass_kg)) %>%
@@ -391,10 +451,7 @@ calcify  <- bind_rows(mass_fluxes, calcify) %>%
             filter(.data$parameter == "CALCIUM TOTAL RECOVERABLE")
 calcify$site_type <- factor(calcify$site_type,
                             levels = c("P", "GWin", "GWout", "I-O", 
-                                       "Delta Lake", "Cal"),
-                            labels = c("P", "GWin", "GWout", "I-O", 
-                                       expression(paste(Delta,"Lake")), 
-                                       "Cal"))
+                                       "Delta Lake", "Cal"))
 plot_obj <- ggplot(calcify) +
             geom_col(aes(x = .data$site_type,
                          y = .data$mass_kg,
@@ -415,23 +472,32 @@ plot_obj
 
 <br>
 
-```{r Calc03, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
+I think McConnaughey didn't actually sum the monthly calcification rates to get
+at a new calcification rate though - it seems like they just used that
+difference from the regression line. Here's what the mass equivalent of
+calcification would be if we use that difference as an annual calcification
+rate.
+
+<br>
+
+Still near-zero, which is not at all what we expect. What gives?
+
+```{r Calc03, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=3.5, fig.align="center"}
 # Multiply lost calcium by lake volume
 Ca_loss <- predictions %>%
            group_by(.data$lake) %>%
-           summarise(loss_meqL = mean(.data$value)) %>%
+           summarise(loss_uM = mean(.data$value)) %>%
            ungroup()
 water_fluxes <- calculate_water_balance(annual = TRUE) %>%
                 select(.data$lake, .data$mean_vol_m3)
 Ca_loss      <- merge(Ca_loss, water_fluxes)
 Ca_loss$parameter <- "CALCIUM TOTAL RECOVERABLE"
 Ca_loss$site_type <- "Ca Loss"
-Ca_loss$mass_kg <- Ca_loss$loss_meqL*Ca_loss$mean_vol_m3
+Ca_loss$mass_umol <- Ca_loss$loss_uM*Ca_loss$mean_vol_m3/1000
 
 # Convert units involved in that calculation
-mgTOmeq <- CSLSchem::mgTOmeq
-mgTOmeq <- mgTOmeq$mgTOmeq[mgTOmeq$description == "CALCIUM TOTAL RECOVERABLE"]
-Ca_loss$mass_kg <- Ca_loss$mass_kg*1000/(mgTOmeq*1000*1000)
+ugTOumol <- CSLSchem::mgTOmeq$mgTOmmol[mgTOmeq$description == "CALCIUM TOTAL RECOVERABLE"]
+Ca_loss$mass_kg <- Ca_loss$mass_umol/(12*ugTOumol*1000*1000*1000)
 
 # Combine with other mass fluxes
 mass_fluxes <- calculate_solute_balance()
