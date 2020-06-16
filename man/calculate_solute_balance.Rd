@@ -8,10 +8,12 @@ calculate_solute_balance(
   desired_lakes = c("Pleasant", "Long", "Plainfield"),
   chem_df = CSLSdata::water_chem,
   chem_tracer = "d18O",
-  solutes = c("CALCIUM TOTAL RECOVERABLE", "CHLORIDE", "MAGNESIUM TOTAL RECOVERABLE",
-    "NITROGEN NH3-N DISS", "SODIUM TOTAL RECOVERABLE", "SULFATE TOTAL"),
-  start_date = "10-01-2018",
-  end_date = "09-30-2019"
+  solutes = c("CALCIUM TOTAL RECOVERABLE", "CONDUCTIVITY, UMHOS/CM @ 25C", "CHLORIDE",
+    "MAGNESIUM TOTAL RECOVERABLE", "NITROGEN NH3-N DISS", "NITROGEN NO3+NO2 DISS (AS N)",
+    "NITROGEN TOTAL", "PH LAB", "POTASSIUM TOTAL RECOVERABLE",
+    "SODIUM TOTAL RECOVERABLE", "SULFATE TOTAL"),
+  start_date = as_datetime(mdy("10-01-2018")),
+  end_date = as_datetime(mdy("09-30-2019"))
 )
 }
 \arguments{

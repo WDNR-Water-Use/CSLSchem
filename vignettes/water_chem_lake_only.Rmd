@@ -229,6 +229,18 @@ this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
 plot_timeseries_by_year(this_parameter, text_size = text_size)
 ```
 
+## Total Nitrogen
+[Back to top](#top)
+
+```{r N, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=5, fig.align="center"}
+parameter     <-"NITROGEN TOTAL"
+plotting_name <- "Total Nitrogen"
+
+this_parameter <- filter_parameter(water_chem, parameter, plotting_name)
+# plot_summary_by_year(this_parameter, text_size = text_size)
+plot_timeseries_by_year(this_parameter, text_size = text_size)
+```
+
 ## Phosphorus, Total
 [Back to top](#top)
 

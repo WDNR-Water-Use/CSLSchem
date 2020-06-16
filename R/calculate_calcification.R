@@ -31,8 +31,8 @@
 calculate_calcification <- function(desired_lakes = c("Pleasant", "Long", "Plainfield"),
                                     water_chem = CSLSdata::water_chem,
                                     chem_tracer = "d18O",
-                                    start_date = "10-01-2018",
-                                    end_date = "09-30-2019"){
+                                    start_date = as_datetime(mdy("10-01-2018")),
+                                    end_date = as_datetime(mdy("09-30-2019"))){
 
   # WATER FLUXES ---------------------------------------------------------------
   # Calculate monthly water balance
@@ -45,8 +45,8 @@ calculate_calcification <- function(desired_lakes = c("Pleasant", "Long", "Plain
                          GWout_res_time = .data$mean_vol_m3/.data$GWout_m3) %>%
                   select(.data$lake, .data$GWin_res_time, .data$GWout_res_time)
 
-  start_date <- as_datetime(mdy(start_date))
-  end_date   <- as_datetime(mdy(end_date))
+  # start_date <- as_datetime(mdy(start_date))
+  # end_date   <- as_datetime(mdy(end_date))
 
   # SOLUTE CONCENTRATIONS ------------------------------------------------------
   # Get solutes of interest (Mg, Ca, Alk)

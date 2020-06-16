@@ -8,8 +8,8 @@ calculate_calcification(
   desired_lakes = c("Pleasant", "Long", "Plainfield"),
   water_chem = CSLSdata::water_chem,
   chem_tracer = "d18O",
-  start_date = "10-01-2018",
-  end_date = "09-30-2019"
+  start_date = as_datetime(mdy("10-01-2018")),
+  end_date = as_datetime(mdy("09-30-2019"))
 )
 }
 \arguments{

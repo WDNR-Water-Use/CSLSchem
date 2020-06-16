@@ -1,0 +1,360 @@
+---
+title: "CSLS Water Chem Visualization: Lake Stratification"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Lake Temp and DO}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+library(knitr)
+library(CSLSchem)
+library(dplyr)
+library(ggplot2)
+library(extrafont)
+library(patchwork)
+library(NISTunits)
+library(lubridate)
+library(stringr)
+
+text_size    <- 12
+lakes        <- c("Pleasant", "Long", "Plainfield")
+water_chem   <- CSLSdata::water_chem
+
+plot_HOBO <- function(lake, water_chem) {
+  ltmp     <- filter_parameter(water_chem, "TEMPERATURE HOBO") %>%
+              filter(.data$lake == !!lake,
+                     !is.na(.data$result)) %>%
+              group_by(.data$date) %>%
+              mutate(min_depth = min(.data$depth1_m),
+                     max_depth = max(.data$depth1_m)) %>%
+              ungroup() %>%
+              filter(.data$depth1_m == .data$min_depth |
+                       .data$depth1_m == .data$max_depth) %>%
+              mutate(depth = ifelse(.data$depth1_m > 2,
+                                    "Bottom", "Surface"),
+                     parameter = "Temperature") %>%
+              select(.data$date, .data$result, .data$depth, .data$parameter)
+  DO     <- filter_parameter(water_chem, "DISSOLVED OXYGEN HOBO") %>%
+            filter(.data$lake == !!lake,
+                     !is.na(.data$result)) %>%
+              group_by(.data$date) %>%
+              mutate(min_depth = min(.data$depth1_m),
+                     max_depth = max(.data$depth1_m)) %>%
+              ungroup() %>%
+              filter(.data$depth1_m == .data$min_depth |
+                       .data$depth1_m == .data$max_depth) %>%
+              mutate(depth = ifelse(.data$depth1_m > 3,
+                                    "Bottom", "Surface"),
+                     parameter = "DO") %>%
+              select(.data$date, .data$result, .data$depth, .data$parameter)
+  plot_df <- rbind(ltmp, DO)
+  
+  plot_obj <- ggplot() +
+              geom_line(data = filter(plot_df, parameter == "Temperature"),
+                        aes(x = date, 
+                            y = result,
+                            color = depth,
+                            linetype = parameter)) +
+              geom_line(data = filter(plot_df, parameter == "DO"),
+                        aes(x = date, 
+                            y = result*2,
+                            color = depth,
+                            linetype = parameter)) +
+              scale_x_datetime(breaks = "2 months",
+                               date_labels = "%b %y") +
+              labs(x = "", 
+                   y = "Temperature (deg C)",
+                   title = sprintf("%s Lake", lake)) +
+              scale_y_continuous(sec.axis = sec_axis(~./2, 
+                                                     name = "Dissolved Oxygen (mg/L)")) +
+              scale_color_brewer(name = "",
+                                 palette = "Paired") +
+              scale_linetype_manual(name = "",
+                                    breaks = c("Temperature", "DO"),
+                                    values = c("solid", "dotted")) +
+    
+              theme_bw() +
+              theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    legend.position = "top")
+  return(plot_obj)
+}
+
+plot_field <- function(lake, water_chem) {
+  ltmp     <- filter_parameter(water_chem, "TEMPERATURE FIELD") %>%
+              filter(.data$lake == !!lake,
+                     !is.na(.data$result)) %>%
+              group_by(.data$date) %>%
+              mutate(min_depth = min(.data$depth1_m),
+                     max_depth = max(.data$depth1_m)) %>%
+              ungroup() %>%
+              filter(.data$depth1_m == .data$min_depth |
+                       .data$depth1_m == .data$max_depth) %>%
+              mutate(depth = ifelse(.data$depth1_m > 1.5,
+                                    "Bottom", "Surface")) %>%
+              select(.data$date, .data$result, .data$depth)
+  DO     <- filter_parameter(water_chem, "DISSOLVED OXYGEN FIELD") %>%
+            filter(.data$lake == !!lake,
+                     !is.na(.data$result)) %>%
+              group_by(.data$date) %>%
+              mutate(min_depth = min(.data$depth1_m),
+                     max_depth = max(.data$depth1_m)) %>%
+              ungroup() %>%
+              filter(.data$depth1_m == .data$min_depth |
+                       .data$depth1_m == .data$max_depth) %>%
+              mutate(depth = ifelse(.data$depth1_m > 1.5,
+                                    "Bottom", "Surface")) %>%
+              select(.data$date, .data$result, .data$depth)
+  
+  plot_obj <- ggplot() +
+              geom_line(data = ltmp,
+                        aes(x = date, 
+                            y = result,
+                            color = depth,
+                            linetype = "Temperature"),
+                        size = 1) +
+              geom_line(data = DO,
+                        aes(x = date, 
+                            y = result*2,
+                            color = depth,
+                            linetype = "DO"),
+                        size = 1) +
+              scale_x_datetime(breaks = "2 months",
+                               date_labels = "%b %y") +
+              labs(x = "", 
+                   y = "Temperature (deg C)",
+                   title = sprintf("%s Lake", lake)) +
+              scale_y_continuous(sec.axis = sec_axis(~./2, 
+                                                     name = "Dissolved Oxygen (mg/L)")) +
+              scale_color_brewer(name = "",
+                                 palette = "Paired") +
+              scale_linetype_manual(name = "",
+                                    breaks = c("Temperature", "DO"),
+                                    values = c("solid", "dotted")) +
+              theme_bw() +
+              theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    legend.position = "top")
+  return(plot_obj)
+}
+```
+
+# Temperature and DO Line Plots
+
+```{r lines, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=7, fig.height=8.5, fig.align="center"}
+p1 <- plot_HOBO("Pleasant", water_chem)
+p2 <- plot_field("Long", water_chem)
+p3 <- plot_field("Plainfield", water_chem)
+p1 + p2 + p3 + plot_layout(guides = "auto", ncol = 1) + 
+  plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                size = text_size))
+
+```
+
+# Pleasant Lake Stratification
+
+```{r strat, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=3.25, fig.height=2.75, fig.align="center"}
+lake <- "Pleasant"
+elev_area_vol <- CSLSdata::elev_area_vol
+elev_area_vol <- elev_area_vol %>% filter(.data$lake == !!lake)
+elev_area_vol$elev_ft <- NISTmeterTOft(elev_area_vol$elev_m)
+
+# Calculate maximum depth (meters)
+psnt_raster <- CSLSlevels::lake_raster[[lake]]
+min_elev    <- raster::minValue(psnt_raster)
+elev_area_vol$max_depth_m <- elev_area_vol$elev_m - min_elev
+
+# Calculate log10 lake area (hectares)
+elev_area_vol$area_ha <- NISTsqrMeterTOhectare(elev_area_vol$area_m2)
+
+# Calculate Lathrop/Lillie ratio
+elev_area_vol$ratio   <- (elev_area_vol$max_depth_m - 0.1)/
+                         log10(elev_area_vol$area_ha)
+
+# Calculate approx elevation where ratio = 3.8
+threshold_elev <- approx(x = elev_area_vol$ratio, 
+                         y = elev_area_vol$elev_ft, 
+                         xout = 3.8)$y
+
+thresholds <- data.frame(ratio = c(0,3.8,3.8,3.8),
+                         elev_ft = c(threshold_elev, threshold_elev,
+                                     threshold_elev, min(elev_area_vol$elev_ft)))
+
+# Calculate 10, 50, 90 exceedance levels
+csls_levels <- CSLSlevels::csls_levels
+psnt_levels <- csls_levels %>%
+               filter(.data$lake == !!lake,
+                      year(.data$date) >= 1981,
+                      year(.data$date) <= 2018) %>%
+               mutate(level = .data$level_pred)
+psnt_probs  <- CSLSlevels::calculate_exceedances(df = psnt_levels,
+                                                 probs = c(10,50,90))
+psnt_probs$value <- NISTmeterTOft(psnt_probs$value)
+
+# Plot ratio vs. elevation
+plot_obj <- ggplot() +
+            geom_line(data = elev_area_vol,
+                      aes(x = ratio, y = elev_ft),
+                      size = 1) +
+            geom_path(data = thresholds,
+                       aes(x = ratio, y = elev_ft),
+                       linetype = "dashed") +
+            geom_text(data = data.frame(x = 3.9,
+                                         y = threshold_elev - 0.5,
+                                         label = sprintf("%.1f ft", threshold_elev)),
+                       aes(x = x, y = y, label = label),
+                      hjust = 0,
+                      family = "Segoe UI Semilight",
+                      size = 3.5) +
+            geom_text(data = data.frame(x = c(2, 2),
+                                        y = c(threshold_elev + 1.5, 
+                                              threshold_elev - 1.5),
+                                        label = c("Stratified Lake",
+                                                  "Mixed Lake")),
+                      aes(x = x, y = y, label = label),
+                      family = "Segoe UI Semilight",
+                      size = 3.5) +
+            geom_rect(data = data.frame(ymin = psnt_probs$value[psnt_probs$variable == "90"],
+                                        ymax = psnt_probs$value[psnt_probs$variable == "10"],
+                                        xmin = -Inf,
+                                        xmax = Inf),
+                      aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+                      fill = "grey", alpha = 0.5) +
+            geom_hline(yintercept = psnt_probs$value[psnt_probs$variable == "50"]) +
+            labs(x = "Lathrop/Lillie ratio",
+                 y = "Lake Elevation (ft)",
+                 title = sprintf("%s Lake", lake)) +
+            scale_x_continuous(expand = c(0,0),
+                               limits = c(0,max(elev_area_vol$ratio))) +
+            scale_y_continuous(expand = c(0,0)) +
+            theme_bw() +
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size),
+                  plot.title = element_text(hjust = 0.5))
+
+plot_obj
+
+```
+
+
+## Pleasant Lake Internal Nutrient Loading
+
+```{r nutrients, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=3.25, fig.height=5, fig.align="center"}
+
+lake <- "Pleasant"
+
+# Plot names
+plot_names <- data.frame(description = c("MANGANESE, TOTAL RECOVERABLE",
+                                            "IRON TOTAL RECOVERABLE",
+                                            "SULFATE TOTAL",
+                                            "SULFATE DISS, AS SO4",
+                                            "PHOSPHORUS TOTAL",
+                                            "DISSOLVED OXYGEN FIELD"),
+                         name = c("Mn (ug/L)",
+                                  "Fe (mg/L)",
+                                  "SO4 (mg/L)",
+                                  "SO4 (mg/L)",
+                                  "P (ug/L)",
+                                  "DO (mg/L)"))
+
+# Chem at lake bottom
+deep_chem <- water_chem %>%
+             filter(.data$lake == !!lake,
+                    .data$site_type == "lake",
+                    !.data$description %in% c("TEMPERATURE HOBO", 
+                                              "DISSOLVED OXYGEN HOBO",
+                                              "PH FIELD",
+                                              "TEMPERATURE FIELD",
+                                              "DISSOLVED OXYGEN FIELD",
+                                              "CONDUCTIVITY FIELD"),
+                    .data$depth1_m > 3) %>%
+             mutate(date = floor_date(.data$date, unit = "day"),
+                    depth = "Bottom") %>%
+             dplyr::select(.data$date, .data$description, .data$result, 
+                           .data$units, .data$depth1_m, .data$flag, .data$depth)
+deep_chem_days       <- unique(deep_chem$date)
+deep_chem_day_depths <- unique(deep_chem[,c("date", "depth1_m")])
+
+# DO at lake bottom
+deep_DO <- water_chem %>%
+            filter(.data$lake == !!lake,
+                   .data$site_type == "lake",
+                   floor_date(.data$date, unit = "day") %in% deep_chem_days,
+                   .data$description == c("DISSOLVED OXYGEN FIELD"),
+                   .data$depth1_m > 3) %>%
+             mutate(date = floor_date(.data$date, unit = "day"),
+                    depth = "Bottom") %>%
+             dplyr::select(.data$date, .data$description, .data$result,
+                           .data$depth1_m, .data$depth)
+deep_DO <- merge(deep_DO, deep_chem_day_depths, by = c("date", "depth1_m"))
+
+# Chem and DO at lake surface
+shallow_chem <- water_chem %>%
+                filter(.data$lake == !!lake,
+                   .data$site_type == "lake",
+                   .data$description %in% c("MANGANESE, TOTAL RECOVERABLE",
+                                            "IRON TOTAL RECOVERABLE",
+                                            "SULFATE TOTAL",
+                                            "SULFATE DISS, AS SO4",
+                                            "PHOSPHORUS TOTAL",
+                                            "DISSOLVED OXYGEN FIELD"),
+                   .data$depth1_m == 0) %>%
+                mutate(date = floor_date(.data$date, unit = "day"),
+                       depth = "Surface") %>%
+                select(.data$date, .data$description, .data$result,
+                              .data$depth)
+
+all_chem <- bind_rows(deep_chem, shallow_chem, deep_DO)
+all_chem$name <- as.character(all_chem$description)
+for (p in 1:nrow(plot_names)) {
+  all_chem$name <- str_replace_all(all_chem$name,
+                                   as.character(plot_names$description[p]),
+                                   as.character(plot_names$name[p]))
+}
+
+all_chem <- all_chem %>% 
+            mutate(result = ifelse(.data$description == "PHOSPHORUS TOTAL",
+                                   as.numeric(.data$result)*1000, 
+                                   as.numeric(.data$result)))
+
+
+# Plot
+plot_obj <- ggplot(all_chem) +
+            geom_point(aes(x = .data$date, 
+                           y = .data$result,
+                           color = .data$depth,
+                           shape = .data$depth),
+                       size = 2) +
+            facet_wrap(~name, 
+                       ncol = 1,
+                       strip.position = "left",
+                       scales = "free_y") +
+            labs(x = "", y = "") +
+            # scale_y_continuous(limits = c(0,max(all_chem$result))) +
+            scale_x_datetime(date_breaks = "3 months",
+                             date_minor_breaks = "1 month",
+                             date_labels = "%b %y") +
+            scale_color_manual(name = "",
+                               breaks = c("Surface", "Bottom"),
+                               values = c("#FB9A99", "#E31A1C")) +
+            scale_shape_manual(name = "",
+                               breaks = c("Surface", "Bottom"),
+                               values = c(16, 17)) +
+            theme_bw() +
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size),
+                  legend.position = "top",
+                  legend.margin = margin(0,0,0,0),
+                  legend.box.margin = margin(0,0,0,0))
+
+plot_obj
+```

@@ -1,0 +1,397 @@
+---
+title: "Dynamic Lake Model"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Dynamic Lake Model}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+library(CSLSchem)
+library(CSLSevap)
+library(NISTunits)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(zoo)
+library(reshape2)
+library(extrafont)
+
+text_size   <- 12
+lakes       <- c("Pleasant", "Long", "Plainfield")
+# lakes       <- c("Pleasant")
+dictionary  <- CSLSdata::dictionary
+
+hancock   <- CSLSchem::hancock
+
+start_steady  <- as_datetime("2010-01-01")
+start_dynamic <- as_datetime("2018-08-01")
+end_dynamic   <- as_datetime("2019-11-01")
+
+parameter   <- "MAGNESIUM TOTAL RECOVERABLE"
+# res_time    <- 200 #days
+C_ice       <- 0
+C_evap      <- 0
+# vs          <- 0  # m/d
+# vs_tadj     <- 0.2 
+# kso         <- 0.005 #0.07 #g/m2-d
+# kso_tadj    <- 0 #1
+# use_kniffin <- TRUE
+
+```
+
+```{r weather, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+# Weather (Precipitation and Evaporation)
+weather   <- list(datetimes = as_datetime(mdy(hancock$date)),
+                  atmp = list(min = NISTdegFtOdegC(hancock$atmp_min),
+                              max = NISTdegFtOdegC(hancock$atmp_max)),
+                  pcpn = NISTinchTOmeter(hancock$pcpn)*1000)
+lake_evap <- NULL
+for (lake in lakes) {
+  loc <- dictionary %>%
+         filter(.data$lake == !!lake,
+                .data$obs_type == "LK") %>%
+         mutate(phi = NISTdegTOradian(.data$lat_deg)) %>%
+         select(.data$phi)
+  this_evap <- evaporation("Hamon", loc, weather)
+  this_lake <- cbind(weather$datetimes, weather$pcpn, this_evap) %>%
+               as.data.frame() %>%
+               mutate(lake = !!lake) %>%
+               mutate(date = as_datetime(.data$V1)) %>%
+               select(date = .data$date,
+                      lake = .data$lake,
+                      P_mm = .data$V2,
+                      E_mm = .data$this_evap)
+  dates     <- data.frame(date = seq(min(this_lake$date), 
+                                    max(this_lake$date), 
+                                    by = '1 day'))
+  this_lake <- merge(dates, this_lake, by = "date", all.x = TRUE)
+  zoo_lake  <- read.zoo(select(this_lake, c("date", "E_mm")),
+                        index.name = "date")
+  zoo_lake       <- data.frame(E_mm = na.approx(zoo_lake, rule= 2))
+  this_lake$lake <- lake
+  this_lake$E_mm <- zoo_lake$E_mm
+  lake_evap <- rbind(lake_evap, this_lake) 
+}
+lake_evap$P_mm[is.na(lake_evap$P_mm)] <- 0
+lake_evap$day = yday(lake_evap$date)
+```
+
+```{r lst, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+# Lake surface temperature
+water_chem <- CSLSdata::water_chem
+lake_temp  <- filter_parameter(water_chem, "TEMPERATURE HOBO") %>%
+              group_by(day = yday(.data$date),
+                       lake = .data$lake,) %>%
+              summarise(ltmp_C = mean(.data$result, na.rm = TRUE)) %>%
+              ungroup()
+last_day   <- lake_temp %>% 
+              filter(.data$day == 365) %>%
+              mutate(day = 366)
+lake_temp  <- rbind(lake_temp, last_day)
+```
+
+```{r volume, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+# Combine estimated and observed lake elevation to get complete record
+obs_levels  <- CSLSdata::lake_levels %>%
+               select(.data$date, .data$lake, .data$level_m)
+pred_levels <- CSLSlevels::csls_levels %>%
+               filter(year(.data$date) >= 2010,
+                      (year(.data$date) <= year(min(obs_levels$date))) &
+                        (month(.data$date) < month(min(obs_levels$date))),
+                      .data$lake %in% lakes) %>%
+               select(date = .data$date,
+                      lake = .data$lake,
+                      level_m = .data$level_pred)
+all_levels <- bind_rows(obs_levels, pred_levels) %>%
+               arrange(.data$date)
+
+# Data frame of dates to interpolate to (one for each lake)
+dates <- NULL
+for (lake in lakes){
+  this_lake   <- data.frame(date = seq(min(all_levels$date),
+                                       max(all_levels$date), 
+                                       by = '1 day'),
+                            lake = lake)
+  dates <- rbind(dates, this_lake)
+}
+
+# Make sure have a lake level for every day - interpolate
+lake_levels <- merge(dates, all_levels, by = c("date", "lake"), all.x = TRUE)
+interpreted <- NULL
+for (lake in lakes) {
+  subset         <- lake_levels %>%
+                    arrange(.data$date) %>%
+                    filter(.data$lake == !!lake)
+  zoo_subset     <- read.zoo(select(subset, c("date", "level_m")),
+                             index.name = "date")
+  zoo_subset     <- data.frame(level_m = na.approx(zoo_subset, rule = 2))
+  subset$level_m <- zoo_subset$level_m
+  interpreted    <- rbind(interpreted, subset)
+}
+
+lake_levels <- interpreted
+
+# Convert levels to elevations
+elev_area_vol <- CSLSdata::elev_area_vol
+new_levels <- NULL
+for (lake in lakes)  {
+  this_elev_area_vol <- elev_area_vol %>% filter(.data$lake == !!lake)
+  f_elev_area        <- approxfun(x = this_elev_area_vol$elev_m,
+                                  y = this_elev_area_vol$area_m2)
+  f_elev_vol         <- approxfun(x = this_elev_area_vol$elev_m,
+                                  y = this_elev_area_vol$vol_m3)
+  these_levels       <- lake_levels %>%
+                        filter(.data$lake == !!lake) %>%
+                        mutate(area_m2 = f_elev_area(.data$level_m),
+                               vol_m3 = f_elev_vol(.data$level_m))
+  new_levels <- rbind(new_levels, these_levels)
+}
+lake_levels <- new_levels
+```
+
+```{r ice, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+# Ice stuff
+estimate_ice_thickness <- function(day, 
+                                   ice_on = 320, 
+                                   ice_off = 105, 
+                                   ice_max = 60, 
+                                   ice_max_depth = NISTinchTOmeter(24)*1000) {
+  # day            <- yday(date)
+  days_in_year   <- 366 #yday(ceiling_date(date, unit = "year") - days(1))
+  days_last_year <- 366 #yday(floor_date(date, unit = "year") - days(1))
+  if (day > ice_on){
+    ice_depth <- ice_max_depth*(day - ice_on)/
+                               (days_in_year - ice_on + ice_max)
+  } else if (day <= ice_max){
+    ice_depth <- ice_max_depth*(days_last_year - ice_on + day)/
+                               (days_last_year - ice_on + ice_max)
+  } else if (day < ice_off) {
+    ice_depth <- ice_max_depth*(ice_off - day)/
+                               (ice_off - ice_max)
+  } else {
+    ice_depth <- 0
+  }
+}
+
+lake_ice <- NULL
+for (i in 1:366) {
+  this_ice <- data.frame(day = i,
+                         I_mm = estimate_ice_thickness(i))
+  lake_ice <- rbind(lake_ice, this_ice)
+}
+```
+
+
+```{r GW, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+lake_GW <- calculate_water_balance(lakes, end_date = as_datetime(mdy("10-31-2019"))) %>%
+           mutate(GWin_m3 = .data$GWin_m3/day(.data$date + months(1) - days(1))) %>%
+           select(.data$lake, .data$date, .data$GWin_m3)
+dates   <- data.frame(date = seq(min(lake_GW$date), 
+                                 max(lake_GW$date), 
+                                 by = '1 day'))
+interpreted <- NULL
+for (lake in lakes) {
+  subset         <- lake_GW %>%
+                    arrange(.data$date) %>%
+                    filter(.data$lake == !!lake)
+  subset         <- merge(subset, dates, by = "date", all.x = TRUE, all.y = TRUE) %>%
+                    mutate(lake = !!lake)
+  zoo_subset     <- read.zoo(select(subset, c("date", "GWin_m3")),
+                            index.name = "date")
+  zoo_subset     <- data.frame(GWin_m3 = na.approx(zoo_subset, rule= 2))
+  subset$GWin_m3 <- zoo_subset$GWin_m3
+  subset$lake    <- lake
+  interpreted    <- rbind(interpreted, subset)
+}
+
+lake_GW  <- interpreted %>%
+            mutate(day = yday(.data$date)) %>%
+            select(.data$lake, .data$day, .data$GWin_m3)
+last_day <- lake_GW %>% 
+            filter(.data$day == 365) %>%
+            mutate(day = 366)
+lake_GW  <- rbind(lake_GW, last_day)
+```
+
+```{r concentrations, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+water_chem <- filter_parameter(water_chem, parameter, no_bad_well = TRUE)
+water_chem <- water_chem  %>%
+              filter(.data$lake %in% c(lakes, "Precip"),
+                     .data$site_type %in% c("precipitation", "lake",
+                                            "upgradient", "downgradient"),
+                     .data$site_id != "PFL-09") %>%
+              group_by(lake = .data$lake,
+                       date = floor_date(.data$date, unit = "day"),
+                       site_type = .data$site_type) %>%
+              summarise(result = mean(.data$result, na.rm = TRUE)) %>%
+              ungroup()
+
+# Map precip to each lake
+for (lake in lakes) {
+  Cpcpn  <- water_chem %>%
+            filter(.data$lake == "Precip",
+                   .data$site_type == "precipitation") %>%
+            mutate(lake = !!lake)
+  water_chem <- rbind(water_chem, Cpcpn)
+}
+water_chem <- filter(water_chem, lake != "Precip")
+
+# Interpolate values for each site type at each lake
+dates <- data.frame(date = seq(start_dynamic, end_dynamic, by = '1 day'))
+interpreted <- NULL
+for (lake in lakes) {
+  for (site_type in unique(filter(water_chem, .data$lake == !!lake)$site_type)){
+    subset        <- water_chem %>%
+                     arrange(.data$date) %>%
+                     filter(.data$lake == !!lake,
+                            .data$site_type == !!site_type)
+    subset        <- merge(subset, dates, by = "date", all.x = TRUE, all.y = TRUE) %>%
+                     mutate(lake = !!lake,
+                            site_type = !!site_type)
+    zoo_subset    <- read.zoo(select(subset, c("date", "result")),
+                              index.name = "date")
+    zoo_subset    <- data.frame(result = na.approx(zoo_subset, rule= 2))
+    subset$result <- zoo_subset$result
+    subset$lake   <- lake
+    subset$site_type <- site_type
+    interpreted   <- rbind(interpreted, subset)
+  }
+}
+
+C_mean <- interpreted %>%
+          filter(.data$site_type %in% c("lake", "upgradient", "precipitation")) %>%
+          group_by(day = yday(.data$date),
+                   lake = .data$lake,
+                   site_type = .data$site_type) %>%
+          summarise(result = mean(.data$result, na.rm = TRUE)) %>%
+          ungroup()
+C_mean <- dcast(C_mean, day+lake~site_type, value.var = "result")
+if (length(unique(interpreted$site_type)) == 4) {
+  colnames(C_mean) <- c("day", "lake", "C_lake", "C_pcpn", "C_GWin")
+} else {
+  colnames(C_mean) <- c("day", "lake", "C_lake", "C_GWin")
+}
+
+last_day <- C_mean %>% 
+            filter(.data$day == 365) %>%
+            mutate(day = 366)
+C_mean   <- rbind(C_mean, last_day)
+
+C_dynamic <- interpreted %>%
+             filter(.data$date >= start_dynamic,
+                    .data$date <= end_dynamic,
+                    .data$site_type %in% c("lake", "upgradient", "precipitation"))
+C_dynamic <- dcast(C_dynamic, date+lake~site_type, value.var = "result")
+if (length(unique(interpreted$site_type)) == 4) {
+  colnames(C_dynamic) <- c("date", "lake", "C_lake", "C_pcpn", "C_GWin")
+} else {
+  colnames(C_dynamic) <- c("date", "lake", "C_lake", "C_GWin")
+}
+
+lake_chem <- water_chem %>%
+             filter(.data$site_type == "lake")
+```
+
+```{r concentrations02, echo=FALSE, eval=TRUE, warning=FALSE, message=FALSE}
+# Combine data
+lake_model <- lake_evap %>%
+              left_join(lake_temp, by = c("day", "lake")) %>%
+              left_join(lake_levels, by = c("date", "lake")) %>%
+              left_join(lake_ice, by = "day") %>%
+              left_join(lake_GW, by = c("day", "lake")) %>%
+              left_join(C_mean, by = c("day","lake")) %>%
+              left_join(C_dynamic, by = c("date", "lake"))
+
+if (!is.null(lake_model$C_pcpn.x)) {
+
+lake_model <- lake_model %>%
+              mutate(P_m3 = .data$P_mm*.data$area_m2/1000,
+                     E_m3 = .data$E_mm*.data$area_m2/1000,
+                     I_m3 = (.data$I_mm-lag(.data$I_mm))*.data$area_m2/1000,
+                     Imelt_m3 = ifelse(.data$I_m3 < 0, -.data$I_m3, 0),
+                     Ifrm_m3 = ifelse(.data$I_m3 > 0, .data$I_m3, 0),
+                     C_pcpn = ifelse(!is.na(.data$C_pcpn.y),
+                                     .data$C_pcpn.y, .data$C_pcpn.x),
+                     C_GWin = ifelse(!is.na(.data$C_GWin.y),
+                                     .data$C_GWin.y, .data$C_GWin.x),
+                     C_lake = ifelse(!is.na(.data$C_lake.y),
+                                     .data$C_lake.y, .data$C_lake.x)) %>%
+                     select(.data$lake, .data$date, .data$day, .data$vol_m3, 
+                            .data$area_m2, .data$P_mm, .data$E_mm, .data$ltmp_C, 
+                            .data$I_mm, .data$P_m3, .data$E_m3, .data$GWin_m3,
+                            .data$Imelt_m3, .data$Ifrm_m3, .data$C_pcpn, .data$C_GWin, 
+                            .data$C_lake)
+} else {
+lake_model <- lake_model %>%
+              mutate(P_m3 = .data$P_mm*.data$area_m2/1000,
+                     E_m3 = .data$E_mm*.data$area_m2/1000,
+                     I_m3 = (.data$I_mm-lag(.data$I_mm))*.data$area_m2/1000,
+                     Imelt_m3 = ifelse(.data$I_m3 < 0, -.data$I_m3, 0),
+                     Ifrm_m3 = ifelse(.data$I_m3 > 0, .data$I_m3, 0),
+                     C_pcpn = 0,
+                     C_GWin = ifelse(!is.na(.data$C_GWin.y),
+                                     .data$C_GWin.y, .data$C_GWin.x),
+                     C_lake = ifelse(!is.na(.data$C_lake.y),
+                                     .data$C_lake.y, .data$C_lake.x)) %>%
+                     select(.data$lake, .data$date, .data$day, .data$vol_m3, 
+                            .data$area_m2, .data$P_mm, .data$E_mm, .data$ltmp_C, 
+                            .data$I_mm, .data$P_m3, .data$E_m3, .data$GWin_m3,
+                            .data$Imelt_m3, .data$Ifrm_m3, .data$C_pcpn, .data$C_GWin, 
+                            .data$C_lake)
+}
+```
+
+```{r rxns, echo=FALSE, eval=FALSE, warning=FALSE, message=FALSE}
+lake_model$first_order <- NA
+lake_model$second_order <- NA
+lake_model$C_lake_calc <- NA
+for (i in 1:nrow(lake_model)) {
+  if (i == 1) {
+    lake_model$C_lake_calc[i] <- lake_model$C_lake[i]
+  } else {
+    lake_model$first_order[i] <- (vs*(1+vs_tadj)^(lake_model$ltmp_C[i]-20))*
+                                 lake_model$C_lake_calc[i-1]*lake_model$area_m2[i]
+    lake_model$second_order[i] <- (kso*(1+kso_tadj)^(lake_model$ltmp_C[i]-20))*
+                                 lake_model$C_lake_calc[i-1]*lake_model$area_m2[i]
+    lake_model$C_lake_calc[i] <- lake_model$C_lake_calc[i-1] + (1/lake_model$vol_m3[i])*
+                                 (lake_model$GWin_m3[i]*(lake_model$C_GWin[i] - 
+                                                          lake_model$C_lake_calc[i-1]) +
+                                    lake_model$P_m3[i]*(lake_model$C_pcpn[i] - 
+                                                          lake_model$C_lake_calc[i-1]) +
+                                    lake_model$E_m3[i]*(lake_model$C_lake_calc[i-1] -                                                                   C_evap) +
+                                    lake_model$Ifrm_m3[i]*(lake_model$C_lake_calc[i-1] -                                                                   C_ice) + 
+                                    lake_model$Imelt_m3[i]*(C_ice - 
+                                                            lake_model$C_lake_calc[i-1]) -
+                                    lake_model$first_order[i] - 
+                                    lake_model$second_order[i])
+    
+  }
+}
+
+ggplot(lake_model) + 
+  geom_line(aes(x = date, 
+                y = C_lake_calc,
+                color = "Calculated")) +
+  geom_line(aes(x = date, 
+                y = C_lake,
+                color = "Mean Measured")) +
+  scale_x_datetime(date_breaks = "6 months",
+                   date_minor_breaks = "2 months",
+                   date_labels = "%b '%y") +
+  scale_color_manual(name = "",
+                     breaks = c("Calculated", "Mean Measured"),
+                     values = c("black", "grey70")) +
+  labs(x = "",
+       y = "Lake Concentration (mg/L)", 
+       title = "Pleasant Lake") +
+  theme_bw() +
+  theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size),
+        legend.position = "top",
+        legend.margin = margin(0,0,0,0))
+
+```

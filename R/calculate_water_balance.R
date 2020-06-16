@@ -27,6 +27,10 @@
 #' @param use_kniffin logical defaults to TRUE to add in Kniffin precipitation
 #'                    isotope samples for months without CSLS precipitation
 #'                    isotope samples
+#' @param seasonal_correction logical defaults to TRUE to incorporate seasonal
+#'                            correction factors for d18O_atm based on
+#'                            difference between calculated and reported
+#'                            d18O_atm values in Krabbenhoft et al. (1990).
 #'
 #' @return fluxes
 #'
@@ -43,17 +47,18 @@
 calculate_water_balance <- function(desired_lakes = c("Pleasant", "Long", "Plainfield"),
                                     chem_df = CSLSdata::water_chem,
                                     chem_tracer = "d18O",
-                                    start_date = "10-01-2018",
-                                    end_date = "09-30-2019",
+                                    start_date = as_datetime(mdy("10-01-2018")),
+                                    end_date = as_datetime(mdy("09-30-2019")),
                                     annual = FALSE,
                                     no_ice = FALSE,
                                     ice_on = "12-01-2018",
                                     ice_off = "03-31-2019",
-                                    use_kniffin = TRUE){
-
-  # Convert dates to datetime
-  start_date <- as_datetime(mdy(start_date))
-  end_date   <- as_datetime(mdy(end_date))
+                                    use_kniffin = TRUE,
+                                    seasonal_correction = TRUE){
+#
+#   # Convert dates to datetime
+#   start_date <- as_datetime(mdy(start_date))
+#   end_date   <- as_datetime(mdy(end_date))
 
   # Change in Storage: Lake Volume ---------------------------------------------
   lake_levels <- CSLSdata::lake_levels
@@ -136,7 +141,7 @@ calculate_water_balance <- function(desired_lakes = c("Pleasant", "Long", "Plain
   # Determine concentration of tracer in evaporation (if not isotope, then zero)
   if (chem_tracer %in% c("d18O", "d2H")) {
     Cevap <- add_evap_isotopes(tracer, weather, chem_df, start_date, end_date,
-                               chem_tracer)
+                               chem_tracer, seasonal_correction)
   } else {
     Cevap <- tracer %>%
              filter(.data$site_type == "precipitation") %>%

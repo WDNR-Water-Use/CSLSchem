@@ -17,6 +17,7 @@ library(ggplot2)
 library(reshape2)
 library(kableExtra)
 library(patchwork)
+library(NISTunits)
 
 text_size  <- 12
 fig_width  <- 6.5
@@ -62,22 +63,41 @@ conservative in these lakes for use in water budget calculations?
 These results for groundwater inflow (70-85% of the water budget) are rather
 high, but WY2019 was a record wet year and these results make sense physically.
 
-```{r annual1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=3, fig.align="center"}
+```{r annual1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=2.5, fig.align="center"}
 p1 <- plot_water_bal(water_budget_annual1, annual = TRUE)
 p2 <- plot_water_bal(water_budget_annual1, annual = TRUE, as_pcnt = TRUE)
 combined <- p1 + p2 & theme(legend.position = "top")
-combined + plot_layout(guides = "collect")
+combined + 
+  plot_layout(guides = "collect") +  
+  plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                size = text_size),
+        legend.position = "top",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(0,0,0,0),
+        plot.margin = margin(0,0.15,0,0, unit = "in"),
+        plot.tag.position = c(0.1, 0.75))
+
 ```
 
 ### Annual using Mg
 
 This is clearly wrong for Long and Plainfield; groundwater outflow is negative.
 
-```{r annual2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=3, fig.align="center"}
+```{r annual2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=2.5, fig.align="center"}
 p1 <- plot_water_bal(water_budget_annual2, annual = TRUE)
 p2 <- plot_water_bal(water_budget_annual2, annual = TRUE, as_pcnt = TRUE)
 combined <- p1 + p2 & theme(legend.position = "top")
-combined + plot_layout(guides = "collect")
+combined + 
+  plot_layout(guides = "collect") +  
+  plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                size = text_size),
+        legend.position = "top",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(0,0,0,0),
+        plot.margin = margin(0,0.15,0,0, unit = "in"),
+        plot.tag.position = c(0.1, 0.75))
 ```
 
 <br>
@@ -86,7 +106,7 @@ combined + plot_layout(guides = "collect")
 
 ### Pleasant Lake
 
-Here's how the **methods compare to one another** (all flows in m^3^/month) at
+Here's how the **methods compare to one another** (all flows in Mgal/month) at
 Pleasant Lake. Note that seepage meter measurements were taken before water
 chemistry measurements started. However, groundwater fluxes appear to experience
 a strong seasonal signal, so we'd expect 2019 fluxes for a given month to be
@@ -103,10 +123,10 @@ similar to (but probably slighly higher than) 2018 fluxes.
 
 ```{r table1, echo=FALSE, message=FALSE, warnings=FALSE}
 table <- data.frame(Method = c("Seepage Meter (average)", "d18O-derived", "Mg-derived"),
-                    Jun18 = c(194000, NA, NA),
-                    Jun19 = c(NA, 326000, 151000),
-                    Sep18 = c(2350000, 308000, 248000),
-                    Sep19 = c(NA, 264000, -104000))
+                    Jun18 = NISTcubMeterTOgallon(c(194000, NA, NA))*1e-6,
+                    Jun19 = NISTcubMeterTOgallon(c(NA, 326000, 151000))*1e-6,
+                    Sep18 = NISTcubMeterTOgallon(c(2350000, 308000, 248000))*1e-6,
+                    Sep19 = NISTcubMeterTOgallon(c(NA, 264000, -104000))*1e-6)
 colnames(table) <- c("Method", "Jun '18", "Jun '19", "Sep '18", "Sep '19")
 
 options(knitr.kable.NA = '')
@@ -139,6 +159,30 @@ Groundwater Inflow, Jun 2018:
 plot_water_bal(filter(water_budget_monthly1, lake == "Pleasant"))
 ```
 
+```{r psnt1b, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=4, fig.align="center"}
+p1 <- plot_water_bal(filter(water_budget_monthly1, lake == "Pleasant"), 
+                     gw_only = TRUE) + 
+      scale_x_datetime(expand = c(0,0),
+                       date_breaks = "1 month",
+                       date_labels = "%b")
+
+p2 <- plot_water_bal(filter(water_budget_monthly1, lake == "Pleasant"), 
+                     gw_only = TRUE, as_pcnt = TRUE) + 
+      scale_x_datetime(expand = c(0,0),
+                       date_breaks = "1 month",
+                       date_labels = "%b")
+p1 + p2 +  
+  plot_layout(ncol = 1, guides = "collect") +  
+  plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                size = text_size),
+        legend.position = "top",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(0,0,0,0),
+        plot.margin = margin(0,0.15,0,0, unit = "in"),
+        plot.tag.position = c(0.05, 0.85))
+```
+
 #### Monthly using Mg2+
 
 ```{r psnt2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
@@ -148,7 +192,7 @@ plot_water_bal(filter(water_budget_monthly2, lake == "Pleasant"))
 
 ### Long Lake
 
-Here's how the **methods compare to one another** (all flows in m^3^/month) at
+Here's how the **methods compare to one another** (all flows in Mgal/month) at
 Long Lake. Note that seepage meter measurements were taken before water
 chemistry measurements started. However, groundwater fluxes appear to experience
 a strong seasonal signal, so we'd expect 2019 fluxes for a given month to be
@@ -166,10 +210,10 @@ similar to (but probably slighly higher than) 2018 fluxes.
 
 ```{r table2, echo=FALSE, message=FALSE, warnings=FALSE}
 table <- data.frame(Method = c("Seepage Meter (average)", "d18O-derived", "Mg-derived"),
-                    Jun18 = c(21600, NA, NA),
-                    Jun19 = c(NA, 119000, 11000),
-                    Sep18 = c(22400, 17800, 15000),
-                    Sep19 = c(NA, 19000, -11000))
+                    Jun18 = NISTcubMeterTOgallon(c(21600, NA, NA))*1e-6,
+                    Jun19 = NISTcubMeterTOgallon(c(NA, 119000, 11000))*1e-6,
+                    Sep18 = NISTcubMeterTOgallon(c(22400, 17800, 15000))*1e-6,
+                    Sep19 = NISTcubMeterTOgallon(c(NA, 19000, -11000))*1e-6)
 colnames(table) <- c("Method", "Jun '18", "Jun '19", "Sep '18", "Sep '19")
 
 options(knitr.kable.NA = '')
@@ -202,6 +246,30 @@ Groundwater Inflow, Jun 2018:
 plot_water_bal(filter(water_budget_monthly1, lake == "Long"))
 ```
 
+```{r long1b, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=4, fig.align="center"}
+p1 <- plot_water_bal(filter(water_budget_monthly1, lake == "Long"), 
+                     gw_only = TRUE) + 
+      scale_x_datetime(expand = c(0,0),
+                       date_breaks = "1 month",
+                       date_labels = "%b")
+
+p2 <- plot_water_bal(filter(water_budget_monthly1, lake == "Long"), 
+                     gw_only = TRUE, as_pcnt = TRUE) + 
+      scale_x_datetime(expand = c(0,0),
+                       date_breaks = "1 month",
+                       date_labels = "%b")
+p1 + p2 +  
+  plot_layout(ncol = 1, guides = "collect") +  
+  plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                size = text_size),
+        legend.position = "top",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(0,0,0,0),
+        plot.margin = margin(0,0.15,0,0, unit = "in"),
+        plot.tag.position = c(0.05, 0.85))
+```
+
 #### Monthly using Mg2+
 
 ```{r long2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
@@ -210,7 +278,7 @@ plot_water_bal(filter(water_budget_monthly2, lake == "Long"))
 
 ### Plainfield Lake
 
-Here's how the **methods compare to one another** (all flows in m^3^/month) at
+Here's how the **methods compare to one another** (all flows in Mgal/month) at
 Plainfield Lake. Note that seepage meter measurements were taken before water
 chemistry measurements started. However, groundwater fluxes appear to experience
 a strong seasonal signal, so we'd expect 2019 fluxes for a given month to be
@@ -227,10 +295,10 @@ similar to (but probably slighly higher than) 2018 fluxes.
 
 ```{r table3, echo=FALSE, message=FALSE, warnings=FALSE}
 table <- data.frame(Method = c("Seepage Meter (average)", "d18O-derived", "Mg-derived"),
-                    Jun18 = c(111400, NA, NA),
-                    Jun19 = c(NA, 174000, 4700),
-                    Sep18 = c(25000, 34000, 15000),
-                    Sep19 = c(NA, 47000, -6800))
+                    Jun18 = NISTcubMeterTOgallon(c(111400, NA, NA))*1e-6,
+                    Jun19 = NISTcubMeterTOgallon(c(NA, 174000, 4700))*1e-6,
+                    Sep18 = NISTcubMeterTOgallon(c(25000, 34000, 15000))*1e-6,
+                    Sep19 = NISTcubMeterTOgallon(c(NA, 47000, -6800))*1e-6)
 colnames(table) <- c("Method", "Jun '18", "Jun '19", "Sep '18", "Sep '19")
 
 options(knitr.kable.NA = '')
@@ -261,6 +329,30 @@ Groundwater Inflow, Jun 2018:
 
 ```{r pfl1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=fig_height, fig.align="center"}
 plot_water_bal(filter(water_budget_monthly1, lake == "Plainfield"))
+```
+
+```{r pfl1b, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=fig_width, fig.height=4, fig.align="center"}
+p1 <- plot_water_bal(filter(water_budget_monthly1, lake == "Plainfield"), 
+                     gw_only = TRUE) + 
+      scale_x_datetime(expand = c(0,0),
+                       date_breaks = "1 month",
+                       date_labels = "%b")
+
+p2 <- plot_water_bal(filter(water_budget_monthly1, lake == "Plainfield"), 
+                     gw_only = TRUE, as_pcnt = TRUE) + 
+      scale_x_datetime(expand = c(0,0),
+                       date_breaks = "1 month",
+                       date_labels = "%b")
+p1 + p2 +  
+  plot_layout(ncol = 1, guides = "collect") +  
+  plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                size = text_size),
+        legend.position = "top",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(0,0,0,0),
+        plot.margin = margin(0,0.15,0,0, unit = "in"),
+        plot.tag.position = c(0.05, 0.85))
 ```
 
 #### Monthly using Mg2+

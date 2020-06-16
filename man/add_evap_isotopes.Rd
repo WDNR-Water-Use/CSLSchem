@@ -4,7 +4,15 @@
 \alias{add_evap_isotopes}
 \title{Add evaporation isotopes to dataset}
 \usage{
-add_evap_isotopes(tracer, weather, chem_df, start_date, end_date, chem_tracer)
+add_evap_isotopes(
+  tracer,
+  weather,
+  chem_df,
+  start_date,
+  end_date,
+  chem_tracer,
+  seasonal_correction
+)
 }
 \arguments{
 \item{tracer}{data frame with water chemistry information for stable isotope.}
@@ -19,6 +27,11 @@ for getting lake surface temperature.}
 \item{end_date}{end date of analysis.}
 
 \item{chem_tracer}{name of stable isotope, "d18O" or "d2H".}
+
+\item{seasonal_correction}{logical defaults to TRUE to incorporate seasonal
+correction factors for d18O_atm based on
+difference between calculated and reported
+d18O_atm values in Krabbenhoft et al. (1990).}
 }
 \value{
 Cevap, new data frame with same columns as tracer, but with only
