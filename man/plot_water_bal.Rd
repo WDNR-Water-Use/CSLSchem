@@ -14,7 +14,8 @@ plot_water_bal(
   fill_breaks = c("P", "E", "GWin", "GWout", "dV"),
   fill_labels = c("Precipitation", "Evaporation", "GW Inflow", "GW Outflow",
     expression(paste(Delta, " Lake Volume"))),
-  fill_values = c("#1F78B4", "#A6CEE3", "#33A02C", "#B2DF8A", "#FB9A99")
+  fill_values = c("#1F78B4", "#A6CEE3", "#33A02C", "#B2DF8A", "#FB9A99"),
+  english_units = TRUE
 )
 }
 \arguments{
@@ -40,6 +41,8 @@ water budget.}
 
 \item{fill_values}{vector with hex codes for colors associated with each
 variable.}
+
+\item{english_units}{logical defaults to TRUE to convert from m3 to gal.}
 }
 \value{
 plot_obj - a plot object with aesthetics added

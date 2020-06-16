@@ -8,13 +8,14 @@ calculate_water_balance(
   desired_lakes = c("Pleasant", "Long", "Plainfield"),
   chem_df = CSLSdata::water_chem,
   chem_tracer = "d18O",
-  start_date = "10-01-2018",
-  end_date = "09-30-2019",
+  start_date = as_datetime(mdy("10-01-2018")),
+  end_date = as_datetime(mdy("09-30-2019")),
   annual = FALSE,
   no_ice = FALSE,
   ice_on = "12-01-2018",
   ice_off = "03-31-2019",
-  use_kniffin = TRUE
+  use_kniffin = TRUE,
+  seasonal_correction = TRUE
 )
 }
 \arguments{
@@ -51,6 +52,11 @@ for ice-free months only.}
 \item{use_kniffin}{logical defaults to TRUE to add in Kniffin precipitation
 isotope samples for months without CSLS precipitation
 isotope samples}
+
+\item{seasonal_correction}{logical defaults to TRUE to incorporate seasonal
+correction factors for d18O_atm based on
+difference between calculated and reported
+d18O_atm values in Krabbenhoft et al. (1990).}
 }
 \value{
 fluxes

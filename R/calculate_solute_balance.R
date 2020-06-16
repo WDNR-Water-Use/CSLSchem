@@ -36,18 +36,23 @@ calculate_solute_balance <- function(desired_lakes = c("Pleasant", "Long", "Plai
                                      chem_df = CSLSdata::water_chem,
                                      chem_tracer = "d18O",
                                      solutes = c("CALCIUM TOTAL RECOVERABLE",
+                                                 "CONDUCTIVITY, UMHOS/CM @ 25C",
                                                  "CHLORIDE",
                                                  "MAGNESIUM TOTAL RECOVERABLE",
                                                  "NITROGEN NH3-N DISS",
+                                                 "NITROGEN NO3+NO2 DISS (AS N)",
+                                                 "NITROGEN TOTAL",
+                                                 "PH LAB",
+                                                 "POTASSIUM TOTAL RECOVERABLE",
                                                  "SODIUM TOTAL RECOVERABLE",
                                                  "SULFATE TOTAL"),
-                                     start_date = "10-01-2018",
-                                     end_date = "09-30-2019"){
+                                     start_date = as_datetime(mdy("10-01-2018")),
+                                     end_date = as_datetime(mdy("09-30-2019"))){
 
   # WATER FLUXES ---------------------------------------------------------------
   # Calculate water balance
   water_fluxes <- calculate_water_balance(desired_lakes, chem_df, chem_tracer,
-                                          "09-01-2018", end_date)
+                                          start_date - months(1), end_date)
 
   # Pull out fluxes of interest
   water_fluxes <- water_fluxes %>%
@@ -66,24 +71,30 @@ calculate_solute_balance <- function(desired_lakes = c("Pleasant", "Long", "Plai
   }
 
   # SOLUTE CONCENTRATIONS ------------------------------------------------------
-  # Convert dates to datetime
-  start_date <- as_datetime(mdy(start_date))
-  end_date   <- as_datetime(mdy(end_date))
+  # # Convert dates to datetime
+  # start_date <- as_datetime(mdy(start_date))
+  # end_date   <- as_datetime(mdy(end_date))
 
   # Get solutes of interest, interpolate to monthly values
   C_solutes <- NULL
   for (solute in solutes) {
     C_solute <- filter_parameter(chem_df, solute)
+    units    <- unique(C_solute$units)[!is.na(unique(C_solute$units))]
     C_solute <- C_solute %>%
-                filter(.data$date >= start_date - months(1),
-                       .data$date <= end_date,
-                       .data$site_type %in% c("precipitation",
+                filter(.data$site_type %in% c("precipitation",
                                               "lake",
-                                              "upgradient"))
+                                              "upgradient")) %>%
+                group_by(date = floor_date(.data$date, unit = "day"),
+                         lake = .data$lake,
+                         site_type = .data$site_type) %>%
+                summarise(result = mean(.data$result, na.rm = TRUE))
 
-    units <- unique(C_solute$units)[!is.na(unique(C_solute$units))]
+    if (solute == "PH LAB") {
+      C_solute$result <- 10^-(C_solute$result)
+    }
+
     if (length(units) > 1 ) {
-      warning("One or more solutes has units other than MG/L")
+      warning("One or more results has a different unit than expected")
     }
     C_solute <- interpolate_chem_values(C_solute, dt = "day") %>%
                  mutate(parameter = solute,
@@ -92,6 +103,9 @@ calculate_solute_balance <- function(desired_lakes = c("Pleasant", "Long", "Plai
                         .data$site_type, .data$result, .data$units)
     C_solutes <- rbind(C_solutes, C_solute)
   }
+  C_solutes <- C_solutes %>%
+               filter(.data$date >= start_date - months(1),
+                      .data$date <= end_date)
 
   # Map precip to each lake
   for (lake in desired_lakes) {

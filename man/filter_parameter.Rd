@@ -13,6 +13,7 @@ filter_parameter(
   no_dups = TRUE,
   no_age = FALSE,
   no_bad_well = FALSE,
+  no_bad_sample = TRUE,
   no_lod = FALSE,
   no_comment = FALSE,
   note_lake_bottom = FALSE

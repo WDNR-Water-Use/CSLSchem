@@ -1,0 +1,182 @@
+---
+title: "CSLS Water Chem Visualization: Lakes Comparison"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{chem_lakes_only}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+library(CSLSchem)
+library(extrafont)
+library(dplyr)
+library(reshape2)
+library(patchwork)
+library(ggplot2)
+text_size  <- 12
+descriptions <- c("PH LAB",
+                  "ALKALINITY TOTAL CACO3",
+                  "COLOR", 
+                  "SECCHI DEPTH - FEET", 
+                  "CHLOROPHYLL A, FLUORESCENCE (WELSCHMAYER 1994)", "CHLORIDE", 
+                  "CALCIUM TOTAL RECOVERABLE", "MAGNESIUM TOTAL RECOVERABLE", 
+                  "TURBIDITY, LAB NEPHELOMETRIC NTU", "NITROGEN TOTAL", 
+                  "PHOSPHORUS TOTAL")
+```
+
+```{r acidity, eval = TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=1.8, fig.align="center"}
+
+p1 <- plot_comparison("PH LAB", 
+                      "pH", 
+                      text_size)
+p2 <- plot_comparison("ALKALINITY TOTAL CACO3", 
+                      "Alkalinity (as mg/L CaCO3)", 
+                      text_size) + 
+      theme(axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.y = element_blank())
+p1 + p2 + plot_layout(guides = "collect") + plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                        size = text_size))
+```
+
+```{r salinity, eval = TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=3.5, fig.align="center"}
+p1 <- plot_comparison("CALCIUM TOTAL RECOVERABLE", 
+                      "Calcium (mg/L)", 
+                      text_size) +
+      theme(legend.position = "none")
+p2 <- plot_comparison("MAGNESIUM TOTAL RECOVERABLE", 
+                      "Magnesium (mg/L)", 
+                      text_size) + 
+      theme(axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "none")
+p3 <- plot_comparison("CHLORIDE", 
+                      "Chloride (mg/L)", 
+                      text_size)
+combo = {p1 + p2} / {p3 + plot_spacer() + plot_layout(widths = c(2,1))} 
+combo +  
+  plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                size = text_size))
+```
+
+```{r trophic, eval = TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=3.5, fig.align="center"}
+p1 <- plot_comparison("NITROGEN TOTAL", 
+                      "Total Nitrogen (mg/L)", 
+                      text_size) +
+      theme(legend.position = "none")
+p2 <- plot_comparison("PHOSPHORUS TOTAL", 
+                      "Total Phosphorus (mg/L)", 
+                      text_size) + 
+      theme(axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "none")
+p3 <- plot_comparison("CHLOROPHYLL A, FLUORESCENCE (WELSCHMAYER 1994)", 
+                      "Chlorophyll A (ug/L)", 
+                      text_size)
+combo = {p1 + p2} / {p3 + plot_spacer() + plot_layout(widths = c(2,1))} 
+combo +  
+  plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                size = text_size))
+```
+
+```{r clarity, eval = TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=3.5, fig.align="center"}
+
+p1 <- plot_comparison("TURBIDITY, LAB NEPHELOMETRIC NTU", 
+                      "Turbidity (NTU)", 
+                      text_size) +
+      theme(legend.position = "none")
+p2 <- plot_comparison("COLOR", 
+                      "Color (SU)", 
+                      text_size) + 
+      theme(axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "none")
+p3 <- plot_comparison("SECCHI DEPTH - FEET", 
+                      "Secchi Depth (ft)", 
+                      text_size)
+combo = {p1 + p2} / {p3 + plot_spacer() + plot_layout(widths = c(2,1))} 
+combo +  
+  plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                size = text_size))
+```
+
+```{r tables, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+
+descriptions <- c("PH LAB",
+                  "ALKALINITY TOTAL CACO3",
+                  "CONDUCTIVITY, UMHOS/CM @ 25C",
+                  "CALCIUM TOTAL RECOVERABLE", 
+                  "MAGNESIUM TOTAL RECOVERABLE",
+                  "POTASSIUM TOTAL RECOVERABLE",
+                  "SODIUM TOTAL RECOVERABLE",
+                  "SULFATE TOTAL",
+                  "CHLORIDE",
+                  "ALUMINUM,TOTAL RECOVERABLE",
+                  "IRON TOTAL RECOVERABLE",
+                  "MANGANESE, TOTAL RECOVERABLE",
+                  "SILICA, DISSOLVED (MG/L AS SI02)",
+                  "CHLOROPHYLL A, FLUORESCENCE (WELSCHMAYER 1994)",
+                  "NITROGEN TOTAL",  
+                  "PHOSPHORUS TOTAL",
+                  "TURBIDITY, LAB NEPHELOMETRIC NTU",
+                  "COLOR", 
+                  "SECCHI DEPTH - FEET")
+labels         <- c("pH",
+                  "Alkalinity (as mg/L CaCO3)",
+                  "Specific Conductance",
+                  "Calcium", 
+                  "Magnesium",
+                  "Potassium",
+                  "Sodium",
+                  "Sulfate",
+                  "Chloride",
+                  "Aluminum",
+                  "Iron",
+                  "Manganese",
+                  "Silica (mg/L as SiO2)",
+                  "Chlorophyll A",
+                  "Total Nitrogen",  
+                  "Total Phosphorus",
+                  "Turbidity",
+                  "Color", 
+                  "Secchi Depth")
+
+# CSLS lakes observations and stats
+df <- filter_parameter(CSLSdata::water_chem, descriptions, note_lake_bottom = TRUE) %>%
+      filter(.data$site_type == "lake") %>%
+      group_by(.data$lake, .data$description, .data$units) %>%
+      summarise(mean = mean(.data$result, na.rm = TRUE),
+                std = sd(.data$result, na.rm = TRUE)) %>%
+      ungroup() %>%
+      mutate_at("units", as.character) %>%
+      select(lake = .data$lake, 
+             Parameter = .data$description, 
+             mean = .data$mean, 
+             std = .data$std, 
+             Units = .data$units)
+
+df$Parameter <- factor(df$Parameter, levels = descriptions, labels = labels)
+
+df$Units[df$Units == "MG/L"] <- "mg/L"
+df$Units[df$Units == "FEET"] <- "ft"
+
+df$character <- sprintf("%0.3f (%0.3f)", df$mean, df$std)
+df$character[df$Parameter != "Total Phosphorus"] <- sprintf("%0.1f (%0.1f)", 
+                                                              df$mean[df$Parameter != "Total Phosphorus"],
+                                                              df$std[df$Parameter != "Total Phosphorus"])
+df$character[df$Parameter == "Alkalinity (as mg/L CaCO3)"] <- sprintf("%0.0f (%0.0f)", 
+                                                                    df$mean[df$Parameter == "Alkalinity (as mg/L CaCO3)"], 
+                                                                    df$std[df$Parameter == "Alkalinity (as mg/L CaCO3)"])
+
+table <- dcast(df, Parameter+Units~lake, value.var = "character")
+```

@@ -17,6 +17,7 @@
 #' @param fill_labels vector with display labels for plotted variables
 #' @param fill_values vector with hex codes for colors associated with each
 #'                    variable.
+#' @param english_units logical defaults to TRUE to convert from m3 to gal.
 #'
 #' @return plot_obj - a plot object with aesthetics added
 #'
@@ -26,6 +27,7 @@
 #' @importFrom rlang .data
 #' @importFrom reshape2 melt
 #' @importFrom stats reorder
+#' @importFrom NISTunits NISTcubMeterTOgallon
 #'
 #' @export
 
@@ -45,7 +47,8 @@ plot_water_bal <- function(df,
                                            "#A6CEE3",
                                            "#33A02C",
                                            "#B2DF8A",
-                                           "#FB9A99")) {
+                                           "#FB9A99"),
+                           english_units = TRUE) {
   # Decide percent or volume
   if (as_pcnt) {
     df <- df %>%
@@ -56,6 +59,15 @@ plot_water_bal <- function(df,
                  dV = .data$dV_pct)
     ylabel  <- "Volume (%)"
     yscales <- scales::percent
+  } else if (english_units) {
+    df <- df %>%
+          mutate(P = NISTunits::NISTcubMeterTOgallon(.data$P_m3)*1e-6,
+                 E = NISTunits::NISTcubMeterTOgallon(.data$E_m3)*1e-6,
+                 GWin = NISTunits::NISTcubMeterTOgallon(.data$GWin_m3)*1e-6,
+                 GWout = NISTunits::NISTcubMeterTOgallon(.data$GWout_m3)*1e-6,
+                 dV = NISTunits::NISTcubMeterTOgallon(.data$dV_m3)*1e-6)
+    ylabel  <- "Volume (Mgal)"
+    yscales <- scales::number_format(0.1)
   } else {
     df <- df %>%
           mutate(P = .data$P_m3,

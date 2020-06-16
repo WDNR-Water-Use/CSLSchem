@@ -33,7 +33,9 @@ Suggests:
     testthat,
     devtools,
     cowplot,
-    patchwork
+    patchwork,
+    raster,
+    CSLSlevels
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.0

@@ -48,11 +48,14 @@ lake <- "Pleasant"
 plot_df  <- pairs %>% filter(.data$lake %in% c(!!lake, "Precip"))
 ggplot(plot_df, 
        aes(x = x_val, y = y_val, color = site_type)) +
-              geom_point() +
+              geom_point(na.rm = TRUE) +
               facet_grid(y_param ~ x_param, 
                          scales = "free",
                          switch = "y") +
-              stat_smooth(method = "lm", se = FALSE, color = "grey40") +
+              stat_smooth(method = "lm", 
+                          se = FALSE, 
+                          color = "grey40", 
+                          na.rm = TRUE) +
               scale_color_manual(name = "",
                                  breaks = c("precipitation",
                                             "upgradient",
@@ -80,11 +83,14 @@ lake <- "Long"
 plot_df  <- pairs %>% filter(.data$lake %in% c(!!lake, "Precip"))
 ggplot(plot_df, 
        aes(x = x_val, y = y_val, color = site_type)) +
-              geom_point() +
+              geom_point(na.rm = TRUE) +
               facet_grid(y_param ~ x_param, 
                          scales = "free",
                          switch = "y") +
-              stat_smooth(method = "lm", se = FALSE, color = "grey40") +
+              stat_smooth(method = "lm", 
+                          se = FALSE, 
+                          color = "grey40",
+                          na.rm = TRUE) +
               scale_color_manual(name = "",
                                  breaks = c("precipitation",
                                             "upgradient",
@@ -112,11 +118,14 @@ lake <- "Plainfield"
 plot_df  <- pairs %>% filter(.data$lake %in% c(!!lake, "Precip"))
 ggplot(plot_df, 
        aes(x = x_val, y = y_val, color = site_type)) +
-              geom_point() +
+              geom_point(na.rm = TRUE) +
               facet_grid(y_param ~ x_param, 
                          scales = "free",
                          switch = "y") +
-              stat_smooth(method = "lm", se = FALSE, color = "grey40") +
+              stat_smooth(method = "lm", 
+                          se = FALSE, 
+                          color = "grey40", 
+                          na.rm = TRUE) +
               scale_color_manual(name = "",
                                  breaks = c("precipitation",
                                             "upgradient",
@@ -170,7 +179,7 @@ plot_df <- pairs %>%
 
 ggplot(plot_df, 
        aes(x = x_val, y = y_val, color = site_type)) +
-              geom_point() +
+              geom_point(na.rm = TRUE) +
               facet_grid(~lake) +
               # geom_abline(intercept = 0, 
               #             slope = line_fit$coefficients[1], 
@@ -179,7 +188,7 @@ ggplot(plot_df,
                           se = FALSE, 
                           formula = y ~ 0 + x, 
                           color = "grey40") +
-              # stat_smooth(method = "lm", se = FALSE, color = "grey40") +
+              # stat_smooth(method = "lm", se = FALSE, color = "grey40",na.rm = TRUE) +
               scale_color_manual(name = "",
                                  breaks = c("precipitation",
                                             "upgradient",

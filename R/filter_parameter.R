@@ -16,6 +16,8 @@
 #'               past the holding date.
 #' @param no_bad_well logical defaults to FALSE to include samples from wells
 #'                    known to behave weirdly.
+#' @param no_bad_sample logical defaults to TRUE to exclude bad measurements
+#'                      from QC.
 #' @param no_lod logical defaults to FALSE to include samples with results below
 #'               the limit of detection.
 #' @param no_comment logical defaults to FALSE to include samples with other
@@ -35,7 +37,8 @@
 
 filter_parameter <- function(water_chem, parameter, plotting_name = "",
                              numeric = TRUE, no_blanks = TRUE, no_dups = TRUE,
-                             no_age = FALSE, no_bad_well = FALSE, no_lod = FALSE,
+                             no_age = FALSE, no_bad_well = FALSE,
+                             no_bad_sample = TRUE, no_lod = FALSE,
                              no_comment = FALSE, note_lake_bottom = FALSE){
   # Filter to desired parameters -----------------------------------------------
   df <- water_chem %>%
@@ -59,6 +62,9 @@ filter_parameter <- function(water_chem, parameter, plotting_name = "",
   if (no_bad_well) {
     df <- df %>% filter(.data$flag != "BAD_WELL")
   }
+  if (no_bad_sample) {
+    df <- df %>% filter(.data$flag != "BAD_SAMPLE")
+  }
   if (no_lod) {
     df <- df %>% filter(.data$flag != "LOD")
   }
@@ -79,8 +85,10 @@ filter_parameter <- function(water_chem, parameter, plotting_name = "",
   if (note_lake_bottom){
     if (!is.null(df$site_type[df$site_type == "lake" &
                               (df$depth1_m > 5 | df$depth2_m > 5)])) {
+      df$site_type <- as.character(df$site_type)
       df$site_type[df$site_type == "lake" &
                      (df$depth1_m > 5 | df$depth2_m > 5)] <- "lake_bottom"
+      df$site_type <- as.factor(df$site_type)
     }
   }
 

@@ -10,6 +10,10 @@
 #' @param start_date start date of analysis.
 #' @param end_date end date of analysis.
 #' @param chem_tracer name of stable isotope, "d18O" or "d2H".
+#' @param seasonal_correction logical defaults to TRUE to incorporate seasonal
+#'                            correction factors for d18O_atm based on
+#'                            difference between calculated and reported
+#'                            d18O_atm values in Krabbenhoft et al. (1990).
 #'
 #' @return Cevap, new data frame with same columns as tracer, but with only
 #'         calculated evaporation values.
@@ -18,11 +22,12 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang .data
 #' @importFrom dplyr filter summarise mutate select
+#' @importFrom lubridate month
 #'
 #' @export
 
 add_evap_isotopes <- function(tracer, weather, chem_df, start_date, end_date,
-                              chem_tracer){
+                              chem_tracer, seasonal_correction){
 
   # Filter to require inputs, ensure dates will match (end-of-month)
   Cpcpn <- tracer %>%
@@ -62,7 +67,9 @@ add_evap_isotopes <- function(tracer, weather, chem_df, start_date, end_date,
                                            .data$RH_pct,
                                            .data$Cpcpn,
                                            .data$Clake,
-                                           chem_tracer)) %>%
+                                           chem_tracer,
+                                           month(.data$date),
+                                           seasonal_correction)) %>%
            ungroup() %>%
            select(.data$date, .data$lake, .data$site_type, .data$result)
 

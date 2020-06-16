@@ -433,7 +433,7 @@ calcify  <- calcify %>%
                    site_type = "Cal")
 
 # Combine with other mass fluxes
-mass_fluxes <- calculate_solute_balance()
+mass_fluxes <- calculate_solute_balance(solutes = "CALCIUM TOTAL RECOVERABLE")
 mass_fluxes <- mass_fluxes %>%
                group_by(lake = .data$lake,
                         parameter = .data$parameter,
@@ -500,7 +500,7 @@ ugTOumol <- CSLSchem::mgTOmeq$mgTOmmol[mgTOmeq$description == "CALCIUM TOTAL REC
 Ca_loss$mass_kg <- Ca_loss$mass_umol/(12*ugTOumol*1000*1000*1000)
 
 # Combine with other mass fluxes
-mass_fluxes <- calculate_solute_balance()
+mass_fluxes <- calculate_solute_balance(solutes = "CALCIUM TOTAL RECOVERABLE")
 mass_fluxes <- mass_fluxes %>%
                group_by(lake = .data$lake,
                         parameter = .data$parameter,

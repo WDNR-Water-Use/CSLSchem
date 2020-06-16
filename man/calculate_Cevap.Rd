@@ -4,7 +4,16 @@
 \alias{calculate_Cevap}
 \title{Evaporation stable isotope}
 \usage{
-calculate_Cevap(atmp, ltmp, RH, Cpcpn, Clake, chem_tracer)
+calculate_Cevap(
+  atmp,
+  ltmp,
+  RH,
+  Cpcpn,
+  Clake,
+  chem_tracer,
+  month,
+  seasonal_correction = TRUE
+)
 }
 \arguments{
 \item{atmp}{air temperature (C)}
@@ -18,6 +27,13 @@ calculate_Cevap(atmp, ltmp, RH, Cpcpn, Clake, chem_tracer)
 \item{Clake}{stable isotope composition of the lake}
 
 \item{chem_tracer}{name of stable isotope, "d18O" or "d2H"}
+
+\item{month}{numeric value of month (e.g., 1, 2, 3,...12)}
+
+\item{seasonal_correction}{logical defaults to TRUE to incorporate seasonal
+correction factors for d18O_atm based on
+difference between calculated and reported
+d18O_atm values in Krabbenhoft et al. (1990).}
 }
 \value{
 Cevap - the isotope composition of evaporation
