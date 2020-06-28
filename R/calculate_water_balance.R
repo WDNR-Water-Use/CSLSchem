@@ -1,232 +1,183 @@
 #' Calculate water balance
 #'
-#' Calculates the water balance using desired tracer, e.g., stable isotopes or
-#' conservative anion/cation.
+#' Calculates the water balance using a stable isotope tracer using either a) a
+#' direct approach, where GWin is directly calculated from measured and
+#' interpolated values, or b) an indirect approach, where a dynamic lake model
+#' with a daily time step is set up and GW residence time is solved for using
+#' optimization.
 #'
-#' @param desired_lakes vector of lakes to analyze, defaults to
-#'                      c("Pleasant", "Long", "Plainfield")
-#' @param chem_df data frame with water chemistry information for all sites.
-#'                Defaults to CSLSdata::water_chem.
-#' @param chem_tracer name of water chemistry parameter to use as a tracer.
-#'                    Must match the "description" field of CSLSdata::water_chem
-#'                    for the desired parameter. Defaults to "d18O". Options
-#'                    include "d18O", "d2H", "CALCIUM TOTAL RECOVERABLE",
-#'                    "MAGNESIUM TOTAL RECOVERABLE", "CHLORIDE", and
-#'                    "SODIUM TOTAL RECOVERABLE".
-#' @param start_date start date of analysis. Defaults to start of WY2019
-#'                   ("2018-10-01").
-#' @param end_date end date of analysis. Defaults to end of WY2019
-#'                   ("2019-09-30").
-#' @param annual logical defaults to FALSE to calculate water balance on a
-#'                monthly time step. If TRUE, calculates for entire timeseries
-#'                (start_date to end_date), assumed to be one year.
-#' @param no_ice logical defaults to FALSE. If TRUE, calculates water balance
-#'               for ice-free months only.
-#' @param ice_on date of ice on, defaults to "12-01-2018"
-#' @param ice_off date of ice off, defaults to "03-31-2019"
-#' @param use_kniffin logical defaults to TRUE to add in Kniffin precipitation
-#'                    isotope samples for months without CSLS precipitation
-#'                    isotope samples
-#' @param seasonal_correction logical defaults to TRUE to incorporate seasonal
-#'                            correction factors for d18O_atm based on
-#'                            difference between calculated and reported
-#'                            d18O_atm values in Krabbenhoft et al. (1990).
+#' @param parameter parameter to use for water balance calculations, defaults to "d18O".
+#' @param start_date start date of calculations
+#' @param end_date end date of calculations
+#' @param dt desired final time step ("day", "month", or "annual")
+#' @param method approach for calculating water balance, either "direct",
+#'               "indirect_calc", or "indirect_load". Defaults to
+#'               "indirect_load".
 #'
-#' @return fluxes
+#' @return lake_fluxes
 #'
 #' @importFrom magrittr %>%
 #' @importFrom rlang .data
-#' @importFrom zoo read.zoo na.approx
-#' @importFrom reshape2 melt dcast
-#' @importFrom CSLSevap CSLS_daily_met
-#' @import dplyr
-#' @import lubridate
+#' @importFrom dplyr mutate
+#' @importFrom lubridate as_datetime floor_date
+#' @importFrom stats optim
 #'
 #' @export
 
-calculate_water_balance <- function(desired_lakes = c("Pleasant", "Long", "Plainfield"),
-                                    chem_df = CSLSdata::water_chem,
-                                    chem_tracer = "d18O",
-                                    start_date = as_datetime(mdy("10-01-2018")),
-                                    end_date = as_datetime(mdy("09-30-2019")),
-                                    annual = FALSE,
-                                    no_ice = FALSE,
-                                    ice_on = "12-01-2018",
-                                    ice_off = "03-31-2019",
-                                    use_kniffin = TRUE,
-                                    seasonal_correction = TRUE){
-#
-#   # Convert dates to datetime
-#   start_date <- as_datetime(mdy(start_date))
-#   end_date   <- as_datetime(mdy(end_date))
+calculate_water_balance <- function(parameter = "d18O",
+                                    start_date = as_datetime("2018-08-22"),
+                                    end_date = as_datetime("2019-11-05"),
+                                    dt = "day",
+                                    method = "indirect_load"){
 
-  # Change in Storage: Lake Volume ---------------------------------------------
-  lake_levels <- CSLSdata::lake_levels
-  dV          <- lake_levels %>%
-                 filter(.data$lake %in% desired_lakes,
-                        .data$date >= start_date - months(1),
-                        .data$date <= end_date) %>%
-                 group_by(lake = .data$lake,
-                          month = floor_date(.data$date, unit = "month")) %>%
-                 summarise(start_vol = .data$vol_m3[which.min(.data$date)],
-                           end_vol = .data$vol_m3[which.max(.data$date)],
-                           mean_area_m2 = mean(.data$area_m2),
-                           mean_vol_m3 = mean(.data$vol_m3)) %>%
-                 ungroup() %>%
-                 mutate(dV_m3 = .data$end_vol - .data$start_vol) %>%
-                 select(lake = .data$lake,
-                        date = .data$month,
-                        dV_m3 = .data$dV_m3,
-                        mean_area_m2 = .data$mean_area_m2,
-                        mean_vol_m3 = .data$mean_vol_m3)
-
-  # Precipitation & Lake Evaporation -------------------------------------------
-  # Use CSLSevap to calculate lake evaporation
-  daily_weather <- CSLS_daily_met()
-  weather       <- daily_weather %>%
-                   filter(.data$lake %in% desired_lakes,
-                          .data$date >= start_date - months(1),
-                          .data$date <= end_date) %>%
-                   group_by(lake = .data$lake,
-                            date = floor_date(.data$date, unit = "month")) %>%
-                   summarise(P_mm = sum(.data$P),
-                             E_mm = sum(.data$E),
-                             atmp_C = mean(c(mean(.data$atmp_min, na.rm = TRUE),
-                                             mean(.data$atmp_max, na.rm = TRUE))),
-                             RH_pct = mean(c(mean(.data$RH_min, na.rm = TRUE),
-                                             mean(.data$RH_max, na.rm = TRUE)))) %>%
+  if (method == "direct") {
+    # Directly calculate GWin --------------------------------------------------
+    lake_inputs <- process_balance_inputs(parameter, start_date, end_date,
+                                          dt = "month", no_ice = FALSE)
+    if (dt == "annual") {
+      lake_inputs <- lake_inputs %>%
+                     group_by(.data$lake) %>%
+                     mutate(C_evap = .data$C_evap*.data$E_m3/
+                                     sum(.data$E_m3[!is.na(.data$C_evap)]),
+                            C_pcpn = .data$C_pcpn*.data$P_m3/
+                                     sum(.data$P_m3[!is.na(.data$C_pcpn)])) %>%
+                     summarise(P_m3 = sum(.data$P_m3, na.rm = TRUE),
+                               E_m3 = sum(.data$E_m3, na.rm = TRUE),
+                               dV_m3 = sum(.data$dV_m3, na.rm = TRUE),
+                               vol_m3 = mean(.data$vol_m3, na.rm = TRUE),
+                               area_m2 = mean(.data$area_m2, na.rm = TRUE),
+                               C_lake = mean(.data$C_lake, na.rm = TRUE),
+                               C_GWin = mean(.data$C_GWin, na.rm = TRUE),
+                               C_evap = sum(.data$C_evap, na.rm = TRUE),
+                               C_pcpn = sum(.data$C_pcpn, na.rm = TRUE),
+                               dC_lake = sum(.data$dC_lake, na.rm = TRUE))
+      lake_inputs$date <- interval(start_date, end_date)
+    }
+    lake_fluxes <- lake_inputs %>%
+                   group_by(.data$lake) %>%
+                   mutate(GWin_m3 = (.data$P_m3*(.data$C_pcpn - .data$C_lake) +
+                                       .data$E_m3*(.data$C_lake - .data$C_evap) -
+                                       .data$vol_m3*.data$dC_lake)/
+                                    (.data$C_lake - .data$C_GWin)) %>%
                    ungroup()
-
-  # Groundwater Inflow ---------------------------------------------------------
-  # Obtain tracer data, summarise as mean for each site type per measurement day
-  # Note: don't limit dates until much farther down ~line 165
-  tracer <- filter_parameter(chem_df, chem_tracer, no_bad_well = TRUE)
-  tracer <- tracer  %>%
-            filter(.data$lake %in% c(desired_lakes, "Precip"),
-                   .data$site_type %in% c("precipitation", "lake",
-                                          "upgradient", "downgradient")) %>%
-            group_by(lake = .data$lake,
-                     date = floor_date(.data$date, unit = "day"),
-                     site_type = .data$site_type) %>%
-            summarise(result = mean(.data$result, na.rm = TRUE)) %>%
-            ungroup()
-
-  # If desired for stable isotopes, fill gaps in precip data w/Kniffin data
-  if (chem_tracer %in% c("d18O", "d2H") & use_kniffin) {
-    tracer <- add_pcpn_isotopes(tracer, start_date, end_date)
-  }
-
-  # Interpolate values to the last day of the month
-  tracer   <- interpolate_chem_values(tracer, dt = "month")
-  tracer$date <- tracer$date + months(1) - days(1)
-
-
-  # Map precip to each lake
-  for (lake in desired_lakes) {
-    Cpcpn  <- tracer %>%
-              filter(.data$lake == "Precip",
-                     .data$site_type == "precipitation") %>%
-              mutate(lake = !!lake)
-    tracer <- rbind(tracer, Cpcpn)
-  }
-
-  # If desired, ignore ice-on months
-  if (no_ice) {
-    ice_interval <- interval(as_datetime(mdy(ice_on)), as_datetime(mdy(ice_off)))
-    tracer       <- tracer %>%
-                    mutate(result = ifelse(.data$date %within% ice_interval,
-                                           NA, .data$result))
-  }
-
-  # Determine concentration of tracer in evaporation (if not isotope, then zero)
-  if (chem_tracer %in% c("d18O", "d2H")) {
-    Cevap <- add_evap_isotopes(tracer, weather, chem_df, start_date, end_date,
-                               chem_tracer, seasonal_correction)
-  } else {
-    Cevap <- tracer %>%
-             filter(.data$site_type == "precipitation") %>%
-             mutate(site_type = "evaporation",
-                    result = 0)
-  }
-  tracer <- rbind(tracer, Cevap)
-
-  # Rearrange tracer data frame for calculations, ensure date match (first-of-month)
-  tracer <- dcast(tracer, lake + date ~ site_type , value.var = "result")
-  colnames(tracer) <- c("lake", "date", "C_GWout", "C_evap",
-                        "C_lake", "C_pcpn", "C_GWin")
-  tracer <- tracer %>% mutate(date = floor_date(.data$date, unit = "month"))
-
-  # Merge tracer data frame with other fluxes (P, E, and dV)
-  fluxes <- merge(dV, weather, by = c("lake", "date")) %>%
-            mutate(P_m3 = .data$P_mm*.data$mean_area_m2/1000,
-                   E_m3 = .data$E_mm*.data$mean_area_m2/1000) %>%
-            select(.data$lake, .data$date, .data$dV_m3, .data$P_m3, .data$E_m3,
-                   .data$mean_area_m2, .data$mean_vol_m3)
-  fluxes <- merge(fluxes, tracer, all.y = TRUE)
-
-  # Calculate change in lake solute mass per month
-  fluxes <- fluxes %>%
-            filter(.data$lake != "Precip") %>%
-            group_by(.data$lake) %>%
-            arrange(.data$date) %>%
-            mutate(M_dlake = .data$C_lake*.data$mean_vol_m3 -
-                             lag(.data$C_lake*.data$mean_vol_m3))  %>%
-            ungroup()
-
-  # Limit to months of interest
-  fluxes <- fluxes %>%
-            filter(.data$date >= start_date,
-                   .data$date <= end_date)
-
-  # Summarise monthly inputs, if desire annual output
-  # See Krabbenhoft et al., 1990 section "Calculation of Net Groundwater Inflow
-  # and Outflow" in Results, just before Discussion for weighting of C_evap &
-  # C_pcpn. Note Gurrieri et al. 2004 also weight C_pcpn by rainfall volume for
-  # chemistry balances (see e.g. footnote "a" in Table 2)
-  if (annual) {
-    fluxes <- fluxes %>%
+  } else if (method == "indirect_calc"){
+    # Indirectly calculate C_lake ----------------------------------------------
+    lake_inputs <- process_balance_inputs(parameter, start_date, end_date,
+                                          dt = "day", no_ice = FALSE)
+    t_start     <- as_datetime("2019-04-01")
+    t_end       <- as_datetime("2019-07-01")
+    params      <- NULL
+    for (t_switch in seq(t_start, t_end, by = "1 day")) {
+      t_switch <- as_datetime(t_switch)
+      for (lake in unique(lake_inputs$lake)) {
+        optimization <- optim(par = c(300, 300),
+                              fn = optimize_water_balance,
+                              df = lake_inputs,
+                              lake = lake,
+                              parameter = parameter,
+                              t_switch = t_switch,
+                              method = "L-BFGS-B",
+                              lower = c(50, 50),
+                              upper = c(2*365.25, 2*365.25))
+        this_lake    <- data.frame(lake = lake,
+                                   t1 = optimization$par[1],
+                                   t2 = optimization$par[2],
+                                   t_switch = t_switch,
+                                   RMSE = optimization$value)
+        params       <- rbind(params, this_lake)
+      }
+    }
+    # Limit to best fit
+    params <- params %>%
               group_by(.data$lake) %>%
-              mutate(C_evap = .data$C_evap*.data$E_m3/
-                              sum(.data$E_m3[!is.na(.data$C_evap)]),
-                     C_pcpn = .data$C_pcpn*.data$P_m3/
-                               sum(.data$P_m3[!is.na(.data$C_pcpn)])) %>%
-              summarise(P_m3 = sum(.data$P_m3, na.rm = TRUE),
-                        E_m3 = sum(.data$E_m3, na.rm = TRUE),
-                        dV_m3 = sum(.data$dV_m3, na.rm = TRUE),
-                        mean_vol_m3 = mean(.data$mean_vol_m3, na.rm = TRUE),
-                        mean_area_m2 = mean(.data$mean_area_m2, na.rm = TRUE),
-                        C_lake = mean(.data$C_lake, na.rm = TRUE),
-                        C_GWin = mean(.data$C_GWin, na.rm = TRUE),
-                        C_GWout = mean(.data$C_GWout, na.rm = TRUE),
-                        C_evap = sum(.data$C_evap, na.rm = TRUE),
-                        C_pcpn = sum(.data$C_pcpn, na.rm = TRUE),
-                        M_dlake = sum(.data$M_dlake, na.rm = TRUE))
-    fluxes$date <- interval(start_date, end_date)
+              mutate(best_RMSE = min(.data$RMSE)) %>%
+              ungroup() %>%
+              filter(.data$RMSE == .data$best_RMSE) %>%
+              mutate(t1 = round(.data$t1),
+                     t2 = round(.data$t2)) %>%
+              select(.data$lake, .data$t1, .data$t2, .data$t_switch, .data$RMSE)
+    lake_fluxes <- NULL
+    for (i in 1:nrow(params)) {
+      this_lake <- dynamic_lake_water_balance(c(params$t1[i], params$t2[i]),
+                                              lake_inputs,
+                                              as.character(params$lake[i]),
+                                              parameter,
+                                              params$t_switch[i])
+      lake_fluxes <- rbind(lake_fluxes, this_lake)
+    }
+    lake_fluxes$lake <- factor(lake_fluxes$lake,
+                               levels = c("Pleasant", "Long", "Plainfield"))
+
+  } else if (method == "indirect_load") {
+    lake_fluxes <- CSLSchem::lake_fluxes
   }
 
-  # Calculate groundwater inflow (see e.g.: Gurrieri et al., 2004, eq. 3)
-  fluxes$GWin_m3 <- (fluxes$P_m3*(fluxes$C_pcpn - fluxes$C_lake) +
-                       fluxes$E_m3*(fluxes$C_lake - fluxes$C_evap) +
-                       fluxes$dV_m3*fluxes$C_lake -
-                       fluxes$M_dlake)/
-                     (fluxes$C_lake - fluxes$C_GWin)
 
-  # Groundwater Outflow --------------------------------------------------------
-  fluxes$GWout_m3 <- fluxes$P_m3 + fluxes$GWin_m3 - fluxes$E_m3 - fluxes$dV_m3
+  # Summarize by larger timesteps, if needed -----------------------------------
+  if (method %in% c("indirect_calc", "indirect_load")) {
+    lake_fluxes <- lake_fluxes %>%
+                   filter(.data$date >= start_date,
+                          .data$date <= end_date)
+    if (dt == "month") {
+      lake_fluxes <- lake_fluxes %>%
+                     group_by(lake = .data$lake,
+                              date = floor_date(.data$date, unit = "month")) %>%
+                     summarise(atmp_C = mean(.data$atmp_C),
+                               RH_pct = mean(.data$RH_pct),
+                               irr_factor = mean(.data$irr_factor),
+                               ltmp_bot_C = mean(.data$ltmp_bot_C),
+                               ltmp_surf_C = mean(.data$ltmp_surf_C),
+                               area_m2 = mean(.data$area_m2),
+                               vol_m3 = mean(.data$vol_m3),
+                               C_lake = mean(.data$C_lake),
+                               C_pcpn = mean(.data$C_pcpn),
+                               C_GWin = mean(.data$C_GWin),
+                               C_evap = mean(.data$C_evap),
+                               C_lake_calc = mean(.data$C_lake_calc),
+                               P_m3 = sum(.data$P_m3),
+                               E_m3 = sum(.data$E_m3),
+                               GWin_m3 = sum(.data$GWin_m3),
+                               dV_m3 = sum(.data$dV_m3)) %>%
+                     ungroup()
+    } else if (dt == "annual") {
+      lake_fluxes <- lake_fluxes %>%
+                     group_by(lake = .data$lake) %>%
+                     summarise(atmp_C = mean(.data$atmp_C, na.rm = TRUE),
+                               RH_pct = mean(.data$RH_pct, na.rm = TRUE),
+                               irr_factor = mean(.data$irr_factor, na.rm = TRUE),
+                               ltmp_bot_C = mean(.data$ltmp_bot_C, na.rm = TRUE),
+                               ltmp_surf_C = mean(.data$ltmp_surf_C, na.rm = TRUE),
+                               area_m2 = mean(.data$area_m2, na.rm = TRUE),
+                               vol_m3 = mean(.data$vol_m3, na.rm = TRUE),
+                               C_lake = mean(.data$C_lake, na.rm = TRUE),
+                               C_pcpn = mean(.data$C_pcpn, na.rm = TRUE),
+                               C_GWin = mean(.data$C_GWin, na.rm = TRUE),
+                               C_evap = mean(.data$C_evap, na.rm = TRUE),
+                               C_lake_calc = mean(.data$C_lake_calc, na.rm = TRUE),
+                               P_m3 = sum(.data$P_m3, na.rm = TRUE),
+                               E_m3 = sum(.data$E_m3, na.rm = TRUE),
+                               GWin_m3 = sum(.data$GWin_m3, na.rm = TRUE),
+                               dV_m3 = sum(.data$dV_m3, na.rm = TRUE)) %>%
+                     ungroup()
+    }
+  }
+  # GWout ----------------------------------------------------------------------
+  lake_fluxes$GWout_m3 <- lake_fluxes$P_m3 + lake_fluxes$GWin_m3 -
+                          lake_fluxes$E_m3 - lake_fluxes$dV_m3
 
   # Fluxes as percentages ------------------------------------------------------
-  fluxes <- fluxes %>%
-            mutate(P_pct = .data$P_m3/(.data$P_m3 + .data$GWin_m3),
-                   GWin_pct = .data$GWin_m3/(.data$P_m3 + .data$GWin_m3),
-                   E_pct = .data$E_m3/(.data$P_m3 + .data$GWin_m3),
-                   GWout_pct = .data$GWout_m3/(.data$P_m3 + .data$GWin_m3),
-                   dV_pct = .data$dV_m3/(.data$P_m3 + .data$GWin_m3))
+  lake_fluxes <- lake_fluxes %>%
+                 mutate(P_pct = .data$P_m3/(.data$P_m3 + .data$GWin_m3),
+                        GWin_pct = .data$GWin_m3/(.data$P_m3 + .data$GWin_m3),
+                        E_pct = .data$E_m3/(.data$P_m3 + .data$GWin_m3),
+                        GWout_pct = .data$GWout_m3/(.data$P_m3 + .data$GWin_m3),
+                        dV_pct = .data$dV_m3/(.data$P_m3 + .data$GWin_m3))
 
   # If annual, calculate residence time ----------------------------------------
-  if (annual) {
-    fluxes$res_time <- fluxes$mean_vol_m3/(fluxes$P_m3 + fluxes$GWin_m3)
+  if (dt == "annual") {
+    lake_fluxes$res_time <- lake_fluxes$vol_m3/
+                            (lake_fluxes$P_m3 + lake_fluxes$GWin_m3)
   }
 
-  return(fluxes)
-
+  return(lake_fluxes)
 }

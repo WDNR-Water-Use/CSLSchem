@@ -25,12 +25,7 @@
 #' @param RH relative humidity (percent)
 #' @param Cpcpn stable isotope composition of precipitation
 #' @param Clake stable isotope composition of the lake
-#' @param chem_tracer name of stable isotope, "d18O" or "d2H"
-#' @param month numeric value of month (e.g., 1, 2, 3,...12)
-#' @param seasonal_correction logical defaults to TRUE to incorporate seasonal
-#'                            correction factors for d18O_atm based on
-#'                            difference between calculated and reported
-#'                            d18O_atm values in Krabbenhoft et al. (1990).
+#' @param parameter name of stable isotope, "d18O" or "d2H"
 #'
 #' @return Cevap - the isotope composition of evaporation
 #'
@@ -38,8 +33,7 @@
 #'
 #' @export
 
-calculate_Cevap <- function(atmp, ltmp, RH, Cpcpn, Clake, chem_tracer,
-                            month, seasonal_correction = TRUE) {
+calculate_Cevap <- function(atmp, ltmp, RH, Cpcpn, Clake, parameter) {
 
   # Required parameters
   es_a          <- Cevap_sat_vapor_press(atmp)
@@ -47,34 +41,34 @@ calculate_Cevap <- function(atmp, ltmp, RH, Cpcpn, Clake, chem_tracer,
   h             <- Cevap_normalized_humidity(RH, es_a, es_l)
   alpha         <- Cevap_isotope_frac(NISTdegCtOk(ltmp))
 
-  if (chem_tracer == "d18O") {
+  if (parameter == "d18O") {
     K = 14.3
-  } else if (chem_tracer == "d2H") {
+  } else if (parameter == "d2H") {
     K = 12.5
   }
 
   # Seasonal correction factor based on difference between calculated and
   # reported values of d18O_atm in Krabbenhoft et al., 1990.
-  if (seasonal_correction) {
-    corr <- data.frame(month = c(1, 2, 3, 4,
-                                 5, 6, 7,
-                                 8, 9,
-                                 10, 11, 12),
-                       factor = c(1, 1, 1, 1,
-                                  1.0319431, 1.0474563, 1.1181465,
-                                  1.1587506, 1.0335792,
-                                  1, 1, 1))
-    factor <- corr$factor[corr$month == month]
-  } else {
-    factor <- 1
-  }
+  # if (seasonal_correction) {
+  #   corr <- data.frame(month = c(1, 2, 3, 4,
+  #                                5, 6, 7,
+  #                                8, 9,
+  #                                10, 11, 12),
+  #                      factor = c(1, 1, 1, 1,
+  #                                 1.0319431, 1.0474563, 1.1181465,
+  #                                 1.1587506, 1.0335792,
+  #                                 1, 1, 1))
+  #   factor <- corr$factor[corr$month == month]
+  # } else {
+  #   factor <- 1
+  # }
 
   delta_epsilon <- Cevap_kinetic_frac(h, K)
   epsilon       <- Cevap_total_frac(alpha, delta_epsilon)
   Catm          <- Cevap_Catm(Cpcpn, alpha)
 
   # Evaporation
-  Cevap <- ((1/alpha)*Clake - h*Catm*factor - epsilon)/
+  Cevap <- ((1/alpha)*Clake - h*Catm - epsilon)/
                (1 - h + delta_epsilon*10^(-3))
   return(Cevap)
 }

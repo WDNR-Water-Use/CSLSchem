@@ -25,7 +25,8 @@ Imports:
     CSLSiso,
     reshape2,
     zoo,
-    scales
+    scales,
+    usethis
 Suggests:
     knitr,
     rmarkdown,

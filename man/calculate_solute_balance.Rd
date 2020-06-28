@@ -5,35 +5,22 @@
 \title{Calculate solute mass balance}
 \usage{
 calculate_solute_balance(
-  desired_lakes = c("Pleasant", "Long", "Plainfield"),
-  chem_df = CSLSdata::water_chem,
-  chem_tracer = "d18O",
-  solutes = c("CALCIUM TOTAL RECOVERABLE", "CONDUCTIVITY, UMHOS/CM @ 25C", "CHLORIDE",
-    "MAGNESIUM TOTAL RECOVERABLE", "NITROGEN NH3-N DISS", "NITROGEN NO3+NO2 DISS (AS N)",
-    "NITROGEN TOTAL", "PH LAB", "POTASSIUM TOTAL RECOVERABLE",
-    "SODIUM TOTAL RECOVERABLE", "SULFATE TOTAL"),
-  start_date = as_datetime(mdy("10-01-2018")),
-  end_date = as_datetime(mdy("09-30-2019"))
+  parameters = c("CALCIUM TOTAL RECOVERABLE", "CONDUCTIVITY, UMHOS/CM @ 25C",
+    "CHLORIDE", "MAGNESIUM TOTAL RECOVERABLE", "NITROGEN NH3-N DISS",
+    "NITROGEN NO3+NO2 DISS (AS N)", "NITROGEN TOTAL", "PH LAB",
+    "POTASSIUM TOTAL RECOVERABLE", "SODIUM TOTAL RECOVERABLE", "SULFATE TOTAL"),
+  start_date = as_datetime("2018-10-01"),
+  end_date = as_datetime("2019-09-30")
 )
 }
 \arguments{
-\item{desired_lakes}{vector of lakes to analyze, defaults to
-c("Pleasant", "Long", "Plainfield")}
-
-\item{chem_df}{data frame with water chemistry information for all sites.
-Defaults to CSLSdata::water_chem.}
-
-\item{chem_tracer}{name of water chemistry parameter to use as a tracer.
-Must match the "description" field of CSLSdata::water_chem
-for the desired parameter. Defaults to "d18O". Options
-include "d18O", "d2H", "CALCIUM TOTAL RECOVERABLE",
-"MAGNESIUM TOTAL RECOVERABLE", "CHLORIDE", and
-"SODIUM TOTAL RECOVERABLE".}
-
-\item{solutes}{names of water chemsitry parameters to analyze mass balance
-for. Defaults to c("CALCIUM TOTAL RECOVERABLE", "CHLORIDE",
-"MAGNESIUM TOTAL RECOVERABLE", "NITROGEN NH3-N DISS", "SODIUM
-TOTAL RECOVERABLE", "SULFATE TOTAL").}
+\item{parameters}{names of water chemsitry parameters to analyze mass balance
+for. Defaults to c("CALCIUM TOTAL RECOVERABLE",
+"CONDUCTIVITY, UMHOS/CM @ 25C", "CHLORIDE", "MAGNESIUM
+TOTAL RECOVERABLE", "NITROGEN NH3-N DISS", "NITROGEN
+NO3+NO2 DISS (AS N)", "NITROGEN TOTAL", "PH LAB",
+"POTASSIUM TOTAL RECOVERABLE", "SODIUM TOTAL RECOVERABLE",
+"SULFATE TOTAL").}
 
 \item{start_date}{start date of analysis. Defaults to start of WY2019
 ("2018-10-01").}

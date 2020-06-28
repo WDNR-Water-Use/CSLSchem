@@ -67,7 +67,7 @@ plot_water_bal <- function(df,
                  GWout = NISTunits::NISTcubMeterTOgallon(.data$GWout_m3)*1e-6,
                  dV = NISTunits::NISTcubMeterTOgallon(.data$dV_m3)*1e-6)
     ylabel  <- "Volume (Mgal)"
-    yscales <- scales::number_format(0.1)
+    yscales <- scales::number_format(1)
   } else {
     df <- df %>%
           mutate(P = .data$P_m3,

@@ -50,7 +50,9 @@ plot_comparison <- function(description,
   # CSLS lakes observations and stats
   df       <- filter_parameter(CSLSdata::water_chem,
                                description,
-                               note_lake_bottom = TRUE) %>%
+                               note_lake_bottom = TRUE,
+                               no_bad_sample = TRUE,
+                               no_bad_well = TRUE) %>%
               filter(.data$site_type == "lake") %>%
               mutate_at(c("lake", "units"), as.character) %>%
               select(.data$lake, .data$result, .data$units)

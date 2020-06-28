@@ -23,6 +23,8 @@ library(stringr)
 text_size  <- 12
 
 mass_fluxes <- calculate_solute_balance()
+
+# Nitrogen 
 TN_fluxes   <- mass_fluxes %>% 
                filter(.data$parameter == "NITROGEN TOTAL")
 NOx_fluxes  <- mass_fluxes %>% 
@@ -30,36 +32,15 @@ NOx_fluxes  <- mass_fluxes %>%
 NHx_fluxes  <- mass_fluxes %>% 
                filter(.data$parameter == "NITROGEN NH3-N DISS")
 
-N_fluxes <- merge(TN_fluxes,NOx_fluxes, 
-                  by = c("lake", "site_type"),
-                  all.x = TRUE,
-                  all.y = TRUE)
-N_fluxes <- merge(N_fluxes, 
-                  NHx_fluxes, 
-                  by = c("lake", "site_type"),
-                  all.x = TRUE,
-                  all.y = TRUE)
+N_fluxes    <- TN_fluxes %>%
+               full_join(NOx_fluxes, by = c("lake", "site_type")) %>%
+               full_join(NHx_fluxes, by = c("lake", "site_type"))
 N_fluxes$mass_kg.z <- N_fluxes$mass_kg
-# Lake and GWout
-N_fluxes$mass_kg   <- N_fluxes$mass_kg.x
-# GWin and P
-for (i in 1:nrow(N_fluxes)) {
-  if (N_fluxes$site_type[i] %in% c("P", "GWin")) {
-    N_fluxes$mass_kg[i] <- N_fluxes$mass_kg.y[i] + N_fluxes$mass_kg.z[i]
-  }
-}
-# I-O
-N_fluxes <- N_fluxes %>%
-            group_by(.data$lake) %>%
-            mutate(mass_kg = ifelse(.data$site_type == "I-O",
-                                    .data$mass_kg[.data$site_type == "P"] +
-                                      .data$mass_kg[.data$site_type == "GWin"]-
-                                      .data$mass_kg[.data$site_type == "GWout"],
-                                    .data$mass_kg)) %>%
-            ungroup() %>%
-            mutate(parameter = "NITROGEN TOTAL") %>%
-            select(.data$lake, .data$parameter, .data$site_type,
-                   mass_kg = .data$mass_kg)
+
+N_fluxes    <- N_fluxes %>%
+               mutate(mass_kg = .data$mass_kg.x + .data$mass_kg.y + .data$mass_kg.z,
+                      parameter = "NITROGEN TOTAL") %>%
+               select(.data$lake, .data$parameter, .data$site_type, .data$mass_kg)
 
 mass_fluxes <- mass_fluxes %>%
                filter(!.data$parameter %in% c("NITROGEN TOTAL",
@@ -67,66 +48,27 @@ mass_fluxes <- mass_fluxes %>%
                                              "NITROGEN NH3-N DISS"))
 mass_fluxes <- bind_rows(mass_fluxes, N_fluxes)
 
-
-# names <- data.frame(parameter = c("CALCIUM TOTAL RECOVERABLE",
-#                                   "MAGNESIUM TOTAL RECOVERABLE",
-#                                   "POTASSIUM TOTAL RECOVERABLE",
-#                                   "SODIUM TOTAL RECOVERABLE",
-#                                   "CHLORIDE",
-#                                   "SULFATE TOTAL",
-#                                   "NITROGEN TOTAL",
-#                                   "CONDUCTIVITY, UMHOS/CM @ 25C",
-#                                   "PH LAB"),
-#                     name = c("Ca", "Mg", "K", "Na", "Cl", "SO4", "N", 
-#                              "Conductivity (L*uS/cm)", "H (eq)"))
-# mass_fluxes$parameter <- as.character(mass_fluxes$parameter)
-# for (i in nrow(names)) {
-#   mass_fluxes$parameter <- str_replace_all(mass_fluxes$parameter,
-#                                            as.character(names$parameter[i]),
-#                                            as.character(names$name[i]))
-# }
-# mass_fluxes$parameter <- factor(mass_fluxes$parameter,
-#                                 levels = names$name)
-
-mass_fluxes2 <- calculate_solute_balance(solutes = c("CALCIUM TOTAL RECOVERABLE",
-                                                 "CHLORIDE",
-                                                 "MAGNESIUM TOTAL RECOVERABLE",
-                                                 "POTASSIUM TOTAL RECOVERABLE",
-                                                 "SODIUM TOTAL RECOVERABLE",
-                                                 "SULFATE TOTAL"))
-mass_fluxes2 <- mass_fluxes2 %>%
-                group_by(lake = .data$lake,
-                         parameter = .data$parameter,
-                         site_type = .data$site_type) %>%
-                summarise(mass_kg = sum(.data$mass_kg)) %>%
-                ungroup()
-mass_fluxes2 <- mass_fluxes2 %>%
-                group_by(.data$lake, .data$parameter) %>%
-                mutate(pcnt = round(100*.data$mass_kg/
-                              (.data$mass_kg[.data$site_type=="P"]+
-                                 .data$mass_kg[.data$site_type=="GWin"]),1)) %>%
-                ungroup()
-
-
-mass_fluxes3 <- calculate_solute_balance(chem_tracer = "MAGNESIUM TOTAL RECOVERABLE",
-                                         solutes = c("CALCIUM TOTAL RECOVERABLE",
-                                                 "CHLORIDE",
-                                                 "MAGNESIUM TOTAL RECOVERABLE",
-                                                 "POTASSIUM TOTAL RECOVERABLE",
-                                                 "SODIUM TOTAL RECOVERABLE",
-                                                 "SULFATE TOTAL"))
-mass_fluxes3 <- mass_fluxes3 %>%
-                group_by(lake = .data$lake,
-                         parameter = .data$parameter,
-                         site_type = .data$site_type) %>%
-                summarise(mass_kg = sum(.data$mass_kg)) %>%
-                ungroup()
-mass_fluxes3 <- mass_fluxes3 %>%
-                group_by(.data$lake, .data$parameter) %>%
-                mutate(pcnt = round(100*.data$mass_kg/
-                              (.data$mass_kg[.data$site_type=="P"]+
-                                 .data$mass_kg[.data$site_type=="GWin"]),1)) %>%
-                ungroup()
+# Names 
+labels <- data.frame(parameter = c("CALCIUM TOTAL RECOVERABLE",
+                                    "MAGNESIUM TOTAL RECOVERABLE",
+                                    "POTASSIUM TOTAL RECOVERABLE",
+                                    "SODIUM TOTAL RECOVERABLE",
+                                    "CHLORIDE",
+                                    "SULFATE TOTAL",
+                                    "NITROGEN TOTAL",
+                                    "CONDUCTIVITY, UMHOS/CM @ 25C",
+                                    "PH LAB"),
+                     name = c("Calcium (kg)", 
+                              "Magnesium (kg)", 
+                              "Potassium (kg)",
+                              "Sodium (kg)",
+                              "Chloride (kg)",
+                              "Sulfate (kg)",
+                              "Nitrogen (kg)",
+                              "Conductivity (mhos/cm/m3)",
+                              "Hydrogen (eq)"))
+mass_fluxes <- left_join(mass_fluxes, labels, by = "parameter")
+mass_fluxes$name <- factor(mass_fluxes$name, levels = labels$name)
 
 plot_solutes <- function(mass_fluxes, 
                          lake, 
@@ -138,8 +80,9 @@ plot_solutes <- function(mass_fluxes,
               geom_col(aes(x = .data$site_type,
                            y = .data$mass_kg,
                            fill = .data$site_type)) +
-              facet_wrap(~parameter, scales = "free") +
-              labs(x = "", y = "Solute Mass (kg)") +
+              facet_wrap(~name, scales = "free") +
+              labs(x = "", y = "Solute Mass") +
+              scale_y_continuous(labels = scales::scientific) +
               scale_fill_manual(name = "",
                                  values = color_vals) +
               theme_bw() +
@@ -155,143 +98,27 @@ plot_solutes <- function(mass_fluxes,
 format_table <- function(mass_fluxes, lake) {
   table_df <- mass_fluxes %>% 
               filter(.data$lake == !!lake) %>%
+              group_by(.data$parameter) %>%
+              mutate(pcnt = round(100*.data$mass_kg/
+                            (.data$mass_kg[.data$site_type == "P"] + 
+                               .data$mass_kg[.data$site_type == "GWin"]),1)) %>%
+              ungroup() %>%
               select(.data$site_type, .data$parameter, .data$pcnt)
   table_df <- dcast(table_df, parameter~site_type, value.var = "pcnt")
   return(table_df)
 }
 
-
 ```
 
 
 ```{r all01, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
-plot_solutes(mass_fluxes, "Pleasant", text_size)
-plot_solutes(mass_fluxes, "Long", text_size)
-plot_solutes(mass_fluxes, "Plainfield", text_size)
-```
+plot_solutes(filter(mass_fluxes, site_type != "Up"), "Pleasant", text_size)
+plot_solutes(filter(mass_fluxes, site_type != "Up"), "Long", text_size)
+plot_solutes(filter(mass_fluxes, site_type != "Up"), "Plainfield", text_size)
 
-## Overview
 
-This file displays the **solute mass balances** for Calcium, Chloride,
-Magnesium, NH3/NH4, Sodium, and Sulfate for WY2019 at each of the Central Sands
-study lakes. Mass fluxes are calculated as follows:
+format_table(filter(mass_fluxes, site_type != "Up"), "Pleasant")
+format_table(filter(mass_fluxes, site_type != "Up"), "Long")
+format_table(filter(mass_fluxes, site_type != "Up"), "Plainfield")
 
-  * **P, GWin, GWout:** We multiply the mean monthly concentrations of each 
-  solute in precipitation, upgradient groundwater, and the lake by the monthly
-  volume of precipitation, groundwater inflow, and groundwater outflow
-  (respectively), then sum for an annual total. Measured water chemistry results
-  are interpolated to a daily timestep and then averaged for each month.
-  * **I - O:** Inflows minus the outflows, i.e., P + GWin - GWout. If there were 
-  no biological uptake and no other missing sources/sinks, this would equal the 
-  change in solute mass in the lake (i.e. "Delta Lake").
-  * **Delta Lake:** Change in solute mass in the lake (current month lake 
-  concentration * lake volume minus previous month)
-
-## Using d18O-derived water balance
-
-### Pleasant Lake
-
-**Observations:**
-
-  * **Ca, Cl, Mg, Na:** There appears to be quite a bit of biological 
-  uptake/precipitation of these solutes (compare "I-O" to "Delta Lake"). 
-  * **SO4:** is strongly affected by a large lake reading in Oct 2018 followed 
-  by near-zero concentrations for the rest of the year. If this started one 
-  month earlier, "Delta Lake" for SO4 would be near-zero (since Sept 2018 was 
-  also near-zero)
-  * **NH3/NH4:** This is the only solute where most of the influx comes from 
-  precipitation, rather than from groundwater inflow.
-
-```{r psnt2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
-lake <- "Pleasant"
-plot_solutes(mass_fluxes2, lake, text_size)
-# kableExtra::kable(format_table(mass_fluxes2, lake),
-#                   caption = sprintf("Percent of Total Inflow: %s Lake", lake))
-```
-
-### Long Lake
-
-**Observations:**
-
-  * **Ca, Mg, Na:** As at Pleasant, there appears to be quite a bit of biological 
-  uptake/precipitation of these solutes (compare "I-O" to "Delta Lake"). 
-  * **Cl:** We appear to be missing a source of Cl to the lake, whether that's 
-  coming from a contaminated groundwater source or surface runoff.
-  * **SO4:** There is a much smaller biological uptake/precipitation component 
-  here than with Ca, Mg, or Na, but it is still noticeable.
-  * **NH3/NH4:** Missing a major sink of NH3/NH4 in the lake.
-
-```{r long2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
-lake <- "Long"
-plot_solutes(mass_fluxes2, lake, text_size)
-# kableExtra::kable(format_table(mass_fluxes2, lake),
-#                   caption = sprintf("Percent of Total Inflow: %s Lake", lake))
-```
-
-### Plainfield Lake
-
-**Observations:**
-
-  * **Ca, Mg, SO4:** As at Pleasant, there appears to be quite a bit of biological 
-  uptake/precipitation of these solutes (compare "I-O" to "Delta Lake"). 
-  * **Na, Cl:** As at Long Lake (for Cl), we appear to be missing a source of Na 
-  and Cl to the lake. A likely explanation is that this comes from road salt 
-  from the nearby road.
-  * **NH3/NH4:** As at Long Lake, we're also missing a major sink of NH3/NH4 in 
-  the lake.
-
-```{r pfl2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
-lake <- "Plainfield"
-plot_solutes(mass_fluxes2, lake, text_size)
-# kableExtra::kable(format_table(mass_fluxes2, lake),
-#                   caption = sprintf("Percent of Total Inflow: %s Lake", lake))
-```
-
-```{r all, eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=8.5, fig.align="center"}
-p1 <- plot_solutes(mass_fluxes2, "Pleasant", text_size) + 
-      labs(title = "Pleasant Lake")
-p2 <- plot_solutes(mass_fluxes2, "Long", text_size) + 
-      labs(title = "Long Lake")
-p3 <- plot_solutes(mass_fluxes2, "Plainfield", text_size) + 
-      labs(title = "Plainfield Lake")
-p1 + p2 + p3 + plot_layout(ncol = 1, guides = "collect") & 
-  plot_annotation(tag_levels = 'a') &
-  theme(plot.tag = element_text(family = "Segoe UI Semibold",
-                                size = text_size), 
-        legend.position = "top")
-```
-                               size = text_size), legend.position = "top")
-## Using Mg-derived water balance
-
-The Mg-derived water balance leads to much closer values for "I-O" and "Delta
-Lake" for many cations/anions. It matches expectations for Calcium in
-particular - Pleasant Lake shows signs of calcification, but neither Long Lake
-nor Plainfield Lake do (which matches field observations of marl on vegetation).
-However, the Mg-derived water balance is not trustworthy due to many instances
-of negative groundwater inflow/outflow. See more detailed explanation in
-"water_budget_results.html" and "water_budget_approach_overall.html" for
-equations.
-
-### Pleasant Lake
-
-```{r psnt3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
-plot_solutes(mass_fluxes3, lake, text_size)
-# kableExtra::kable(format_table(mass_fluxes3, lake), 
-#                   caption = sprintf("Percent of Total Inflow: %s Lake", lake))
-```
-
-### Long Lake
-
-```{r long3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
-plot_solutes(mass_fluxes3, lake, text_size)
-# kableExtra::kable(format_table(mass_fluxes3, lake), 
-#                   caption = sprintf("Percent of Total Inflow: %s Lake", lake))
-```
-
-### Plainfield Lake
-
-```{r pfl3, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8.5, fig.height=5, fig.align="center"}
-plot_solutes(mass_fluxes3, lake, text_size)
-# kableExtra::kable(format_table(mass_fluxes3, lake), 
-#                   caption = sprintf("Percent of Total Inflow: %s Lake", lake))
 ```

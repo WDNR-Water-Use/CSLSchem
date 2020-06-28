@@ -44,7 +44,7 @@ add_evap_isotopes <- function(tracer, weather, chem_df, start_date, end_date,
            mutate(date = .data$date + months(1) - days(1)) %>%
            select(.data$date, .data$atmp_C, .data$RH_pct) %>%
            unique()
-  water <- filter_lst(chem_df) %>%
+  water <- filter_ltmp(chem_df) %>%
            filter(.data$date >= start_date,
                   .data$date <= end_date) %>%
            group_by(lake = .data$lake,
@@ -67,9 +67,7 @@ add_evap_isotopes <- function(tracer, weather, chem_df, start_date, end_date,
                                            .data$RH_pct,
                                            .data$Cpcpn,
                                            .data$Clake,
-                                           chem_tracer,
-                                           month(.data$date),
-                                           seasonal_correction)) %>%
+                                           chem_tracer)) %>%
            ungroup() %>%
            select(.data$date, .data$lake, .data$site_type, .data$result)
 

@@ -27,9 +27,11 @@ library(scales) # for ::
 # Parameters
 text_size     <- 12
 lakes         <- c("Pleasant", "Long", "Plainfield")
-water_balance <- calculate_water_balance()
 start_date    <- as_datetime(mdy("10-01-2018"))
 end_date      <- as_datetime(mdy("09-30-2019"))
+water_balance <- calculate_water_balance(dt = "month",
+                                         start_date = start_date,
+                                         end_date = end_date)
 
 
 plot_input <- function(df = NULL, ydata, ylabel, yscales = scales::scientific,
@@ -352,7 +354,7 @@ Then, we calculate the **mean monthly lake area**.
 
 ```{r precip4, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width = 6.5, fig.height = 2.5}
 plot_input(df = water_balance,
-           ydata = "mean_area_m2", 
+           ydata = "area_m2", 
            ylabel = expression(Lake~Area~(m^{2})), 
            geom_type = "point", 
            facet_scales = "free_y",
@@ -437,7 +439,7 @@ assume all precipitation measurements represent precipitation on the last day of
 the month in which they were collected. Maribeth Kniffin's data is only used for
 months when we do not have CSLS-collected data.
 
-```{r iso, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width = 6.5, fig.height = 7.5}
+```{r iso, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE, fig.width = 6.5, fig.height = 7.5}
 d18O_measured <- filter_parameter(CSLSdata::water_chem, "d18O", no_bad_well = TRUE) %>%
                  filter(.data$lake %in% c(lakes, "Precip"),
                         .data$site_type %in% c("precipitation", "lake",
@@ -456,22 +458,28 @@ d18O_kniffin  <- d18O_enhanced %>%
                         .data$date <= end_date,
                         !.data$date %in% d18O_measured$date) %>%
                  mutate(measurement = "Measured by M. Kniffin")
-d18O_interpolated <- interpolate_chem_values(d18O_enhanced, dt = "month") %>%
-                     mutate(date = .data$date + months(1) - days(1),
-                            measurement = "Monthly Interpolation")
+for (lake in lakes) {
+   this_lake <- 
+}
+d18O_interpolated <- process_chem("d18O", start_date, end_date) %>%
+                     group_by(date = floor_date(.data$date, unit = "month"),
+                              lake = .data$lake) %>%
+                     summarise_at(c("C_lake", "C_pcpn", "C_GWin"), mean) %>%
+                     ungroup()
+d18O_interpolated <- melt(d18O_interpolated, id.vars = c("lake", "date")) %>%
+                     select(lake = .data$lake, 
+                            date = .data$date,
+                            site_type = .data$variable,
+                            result = .data$value)
+d18O_interpolated$site_type <- as.character(d18O_interpolated$site_type)
+d18O_interpolated$site_type[d18O_interpolated$site_type == "C_pcpn"] <- "precipitation"
+d18O_interpolated$site_type[d18O_interpolated$site_type == "C_lake"] <- "lake"
+d18O_interpolated$site_type[d18O_interpolated$site_type == "C_GWin"] <- "upgradient"
+d18O_interpolated$measurement = "Monthly Interpolation"
 
 plot_df <- bind_rows(d18O_measured, d18O_kniffin, d18O_interpolated) %>%
            filter(.data$date >= start_date,
                   .data$date <= end_date)
-        
-# Map precip to each lake
-for (lake in lakes) {
-  Cpcpn  <- plot_df %>%
-            filter(.data$lake == "Precip",
-                   .data$site_type == "precipitation") %>%
-            mutate(lake = !!lake)
-  plot_df <- rbind(plot_df, Cpcpn)
-}
 plot_df <- plot_df %>% filter(.data$lake != "Precip")
 plot_df$site_type <- factor(plot_df$site_type, 
                             levels = c("upgradient", "lake", "precipitation"),
