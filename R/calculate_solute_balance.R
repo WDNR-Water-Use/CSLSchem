@@ -2,20 +2,13 @@
 #'
 #' Calculates the solute mass balance.
 #'
-#' @param desired_lakes vector of lakes to analyze, defaults to
-#'                      c("Pleasant", "Long", "Plainfield")
-#' @param chem_df data frame with water chemistry information for all sites.
-#'                Defaults to CSLSdata::water_chem.
-#' @param chem_tracer name of water chemistry parameter to use as a tracer.
-#'                    Must match the "description" field of CSLSdata::water_chem
-#'                    for the desired parameter. Defaults to "d18O". Options
-#'                    include "d18O", "d2H", "CALCIUM TOTAL RECOVERABLE",
-#'                    "MAGNESIUM TOTAL RECOVERABLE", "CHLORIDE", and
-#'                    "SODIUM TOTAL RECOVERABLE".
-#' @param solutes names of water chemsitry parameters to analyze mass balance
-#'                for. Defaults to c("CALCIUM TOTAL RECOVERABLE", "CHLORIDE",
-#'                "MAGNESIUM TOTAL RECOVERABLE", "NITROGEN NH3-N DISS", "SODIUM
-#'                TOTAL RECOVERABLE", "SULFATE TOTAL").
+#' @param parameters names of water chemsitry parameters to analyze mass balance
+#'                   for. Defaults to c("CALCIUM TOTAL RECOVERABLE",
+#'                   "CONDUCTIVITY, UMHOS/CM @ 25C", "CHLORIDE", "MAGNESIUM
+#'                   TOTAL RECOVERABLE", "NITROGEN NH3-N DISS", "NITROGEN
+#'                   NO3+NO2 DISS (AS N)", "NITROGEN TOTAL", "PH LAB",
+#'                   "POTASSIUM TOTAL RECOVERABLE", "SODIUM TOTAL RECOVERABLE",
+#'                   "SULFATE TOTAL").
 #' @param start_date start date of analysis. Defaults to start of WY2019
 #'                   ("2018-10-01").
 #' @param end_date end date of analysis. Defaults to end of WY2019
@@ -25,144 +18,85 @@
 #'
 #' @importFrom magrittr %>%
 #' @importFrom rlang .data
-#' @importFrom reshape2 melt dcast
 #' @importFrom stringr str_replace
-#' @import dplyr
-#' @import lubridate
+#' @importFrom dplyr group_by select full_join summarise mutate
+#' @importFrom reshape2 melt
+#' @importFrom lubridate as_datetime
 #'
 #' @export
 
-calculate_solute_balance <- function(desired_lakes = c("Pleasant", "Long", "Plainfield"),
-                                     chem_df = CSLSdata::water_chem,
-                                     chem_tracer = "d18O",
-                                     solutes = c("CALCIUM TOTAL RECOVERABLE",
-                                                 "CONDUCTIVITY, UMHOS/CM @ 25C",
-                                                 "CHLORIDE",
-                                                 "MAGNESIUM TOTAL RECOVERABLE",
-                                                 "NITROGEN NH3-N DISS",
-                                                 "NITROGEN NO3+NO2 DISS (AS N)",
-                                                 "NITROGEN TOTAL",
-                                                 "PH LAB",
-                                                 "POTASSIUM TOTAL RECOVERABLE",
-                                                 "SODIUM TOTAL RECOVERABLE",
-                                                 "SULFATE TOTAL"),
-                                     start_date = as_datetime(mdy("10-01-2018")),
-                                     end_date = as_datetime(mdy("09-30-2019"))){
+calculate_solute_balance <- function(parameters = c("CALCIUM TOTAL RECOVERABLE",
+                                                    "CONDUCTIVITY, UMHOS/CM @ 25C",
+                                                    "CHLORIDE",
+                                                    "MAGNESIUM TOTAL RECOVERABLE",
+                                                    "NITROGEN NH3-N DISS",
+                                                    "NITROGEN NO3+NO2 DISS (AS N)",
+                                                    "NITROGEN TOTAL",
+                                                    "PH LAB",
+                                                    "POTASSIUM TOTAL RECOVERABLE",
+                                                    "SODIUM TOTAL RECOVERABLE",
+                                                    "SULFATE TOTAL"),
+                                     start_date = as_datetime("2018-10-01"),
+                                     end_date = as_datetime("2019-09-30")){
 
   # WATER FLUXES ---------------------------------------------------------------
-  # Calculate water balance
-  water_fluxes <- calculate_water_balance(desired_lakes, chem_df, chem_tracer,
-                                          start_date - months(1), end_date)
-
-  # Pull out fluxes of interest
-  water_fluxes <- water_fluxes %>%
-                  select(.data$date, .data$lake, .data$P_m3, .data$mean_vol_m3,
+  water_fluxes <- calculate_water_balance(dt = "day",
+                                          start_date = start_date,
+                                          end_date = end_date) %>%
+                  select(.data$date, .data$lake, .data$P_m3, .data$vol_m3,
                          .data$GWin_m3, .data$GWout_m3)
 
-  # Rename fluxes to match site_types in water_chem data frame
-  water_cols   <- c("P_m3", "mean_vol_m3", "GWin_m3", "GWout_m3")
-  water_names  <- c("precipitation", "lake", "upgradient", "downgradient")
-  water_fluxes <- melt(water_fluxes, id.vars = c("date", "lake"))
-  colnames(water_fluxes) <- c("date", "lake", "site_type", "vol_m3")
-  for (i in 1:length(water_cols)) {
-    water_fluxes$site_type <- str_replace(water_fluxes$site_type,
-                                          water_cols[i],
-                                          water_names[i])
-  }
-
   # SOLUTE CONCENTRATIONS ------------------------------------------------------
-  # # Convert dates to datetime
-  # start_date <- as_datetime(mdy(start_date))
-  # end_date   <- as_datetime(mdy(end_date))
-
-  # Get solutes of interest, interpolate to monthly values
-  C_solutes <- NULL
-  for (solute in solutes) {
-    C_solute <- filter_parameter(chem_df, solute)
-    units    <- unique(C_solute$units)[!is.na(unique(C_solute$units))]
-    C_solute <- C_solute %>%
-                filter(.data$site_type %in% c("precipitation",
-                                              "lake",
-                                              "upgradient")) %>%
-                group_by(date = floor_date(.data$date, unit = "day"),
-                         lake = .data$lake,
-                         site_type = .data$site_type) %>%
-                summarise(result = mean(.data$result, na.rm = TRUE))
-
-    if (solute == "PH LAB") {
-      C_solute$result <- 10^-(C_solute$result)
+  water_chem <- NULL
+  for (parameter in parameters) {
+    this_chem <- process_chem(parameter,
+                              start_date,
+                              end_date,
+                              dt = "day")
+    if (parameter == "PH LAB") {
+      this_chem[,3:5] <- (10^-(this_chem[,3:5]))*1000 # to make mass conversions work later
     }
-
-    if (length(units) > 1 ) {
-      warning("One or more results has a different unit than expected")
-    }
-    C_solute <- interpolate_chem_values(C_solute, dt = "day") %>%
-                 mutate(parameter = solute,
-                        units = units) %>%
-                 select(.data$date, .data$lake, .data$parameter,
-                        .data$site_type, .data$result, .data$units)
-    C_solutes <- rbind(C_solutes, C_solute)
+    this_chem$parameter <- parameter
+    water_chem          <- rbind(water_chem, this_chem)
   }
-  C_solutes <- C_solutes %>%
-               filter(.data$date >= start_date - months(1),
-                      .data$date <= end_date)
-
-  # Map precip to each lake
-  for (lake in desired_lakes) {
-    Cpcpn     <- C_solutes %>%
-                 filter(.data$lake == "Precip",
-                        .data$site_type == "precipitation") %>%
-                 mutate(lake = !!lake)
-    C_solutes <- rbind(C_solutes, Cpcpn)
-  }
-  C_solutes    <- C_solutes %>% filter(.data$lake != "Precip")
-  C_downgr     <- C_solutes %>%
-                  filter(.data$site_type == "lake") %>%
-                  mutate(site_type = "downgradient")
-  C_solutes    <- rbind(C_solutes, C_downgr)
 
   # SOLUTE MASSES --------------------------------------------------------------
-  # Merge with water fluxes, calcualate mass
-  mass_fluxes <- merge(C_solutes,
-                       water_fluxes,
-                       by = c("date", "lake", "site_type"))
-  # (mg/L) * (m^3) * (1000 L/m^3) / (1000 mg/g * 1000 g/kg)
-  mass_fluxes$mass_kg <- mass_fluxes$result*(mass_fluxes$vol_m3*1000)/(1000*1000)
-  mass_fluxes <- mass_fluxes %>%
-                 arrange(.data$date) %>%
-                 group_by(.data$lake, .data$site_type, .data$parameter) %>%
-                 mutate(mass_kg = ifelse(.data$site_type == "lake",
-                                         .data$mass_kg - lag(.data$mass_kg),
-                                         .data$mass_kg)) %>%
-                 ungroup() %>%
-                 mutate(site_type = ifelse(.data$site_type == "lake",
-                                           "delta_lake", .data$site_type)) %>%
-                 filter(.data$date >= start_date,
-                        .data$date <= end_date) %>%
-                 select(.data$date, .data$lake, .data$site_type,
-                        .data$parameter, .data$mass_kg)
-  mass_IO <- mass_fluxes %>%
-             filter(.data$site_type %in% c("precipitation", "upgradient",
-                                           "downgradient")) %>%
-             mutate(mass_kg = ifelse(.data$site_type == "downgradient",
-                                     -.data$mass_kg,
-                                     .data$mass_kg)) %>%
-             group_by(.data$date, .data$lake, .data$parameter) %>%
-             summarise(mass_kg = sum(.data$mass_kg),
-                       site_type = "in_out") %>%
-             ungroup()
-  mass_fluxes <- rbind(mass_fluxes, mass_IO)
+  # Merge with water fluxes
+  mass_fluxes <- full_join(water_fluxes,
+                            water_chem,
+                            by = c("date", "lake"))
 
+  # Annual summary
   mass_fluxes <- mass_fluxes %>%
-                 group_by(.data$lake, .data$parameter, .data$site_type) %>%
-                 summarise(mass_kg = sum(.data$mass_kg)) %>%
+                 mutate(M_lake = .data$C_lake*(.data$vol_m3*1000)/(1000*1000)) %>%
+                 group_by(.data$lake, .data$parameter) %>%
+                 summarise(P_m3 = sum(.data$P_m3, na.rm = TRUE),
+                           GWin_m3 = sum(.data$GWin_m3, na.rm = TRUE),
+                           GWout_m3 = sum(.data$GWout_m3, na.rm = TRUE),
+                           C_pcpn = mean(.data$C_pcpn, na.rm = TRUE),
+                           C_GWin = mean(.data$C_GWin, na.rm = TRUE),
+                           C_lake = mean(.data$C_lake, na.rm = TRUE),
+                           dM_lake = .data$M_lake[.data$date == max(.data$date[!is.na(.data$M_lake)])] -
+                                     .data$M_lake[.data$date == min(.data$date[!is.na(.data$M_lake)])]) %>%
                  ungroup()
 
-  mass_fluxes$site_type <- factor(mass_fluxes$site_type,
-                                  levels = c("precipitation", "upgradient",
-                                             "downgradient", "in_out",
-                                             "delta_lake"),
-                                  labels = c("P", "GWin", "GWout", "I-O", "Delta Lake"))
-  return(mass_fluxes)
+  # Calculate Masses
+  # (mg/L) * (m^3) * (1000 L/m^3) / (1000 mg/g * 1000 g/kg)
+  mass_fluxes <- mass_fluxes %>%
+                 mutate(P = .data$C_pcpn*(.data$P_m3*1000)/(1000*1000),
+                        GWin = .data$C_GWin*(.data$GWin_m3*1000)/(1000*1000),
+                        GWout = .data$C_lake*(.data$GWout_m3*1000)/(1000*1000),
+                        dLake = .data$dM_lake,
+                        IO = .data$P + .data$GWin - .data$GWout,
+                        Up = .data$IO - .data$dLake) %>%
+                 select(.data$lake, .data$parameter, .data$P, .data$GWin,
+                        .data$GWout, .data$IO, .data$dLake, .data$Up)
 
+  colnames(mass_fluxes) <- c("lake", "parameter", "P", "GWin", "GWout", "I-O",
+                             paste0('\u0394', " Lake"), "Up")
+
+  mass_fluxes           <- melt(mass_fluxes, id.vars = c("lake", "parameter"))
+  colnames(mass_fluxes) <- c("lake", "parameter", "site_type", "mass_kg")
+
+  return(mass_fluxes)
 }

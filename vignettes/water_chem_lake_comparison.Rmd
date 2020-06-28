@@ -152,7 +152,10 @@ labels         <- c("pH",
                   "Secchi Depth")
 
 # CSLS lakes observations and stats
-df <- filter_parameter(CSLSdata::water_chem, descriptions, note_lake_bottom = TRUE) %>%
+df <- filter_parameter(CSLSdata::water_chem, descriptions, 
+                       note_lake_bottom = TRUE, 
+                       no_bad_sample = TRUE,
+                       no_bad_well = TRUE) %>%
       filter(.data$site_type == "lake") %>%
       group_by(.data$lake, .data$description, .data$units) %>%
       summarise(mean = mean(.data$result, na.rm = TRUE),

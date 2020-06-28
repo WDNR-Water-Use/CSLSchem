@@ -41,6 +41,9 @@ past the holding date.}
 \item{no_bad_well}{logical defaults to FALSE to include samples from wells
 known to behave weirdly.}
 
+\item{no_bad_sample}{logical defaults to TRUE to exclude bad measurements
+from QC.}
+
 \item{no_lod}{logical defaults to FALSE to include samples with results below
 the limit of detection.}
 

@@ -1,0 +1,239 @@
+---
+title: "CSLS Water Budget Approach"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{CSLS_water_budget_isotopes}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+# Libraries
+library(CSLSchem)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(extrafont)
+library(patchwork)
+library(NISTunits)
+
+text_size <- 12
+```
+
+
+# Fit with dynamic lake model
+
+```{r fit, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=3}
+lake_fluxes <- calculate_water_balance()
+lake_RMSE   <- lake_fluxes %>%
+               filter(!is.na(.data$C_lake_meas)) %>%
+               group_by(.data$lake) %>%
+               mutate(obs = .data$C_lake_meas,
+                      sim = .data$C_lake_calc,
+                      RMSE = sqrt(mean((.data$sim - .data$obs)^2)),
+                      R2 = 1 - (sum((.data$obs - .data$sim)^2)/
+                                   sum((.data$obs - mean(.data$obs))^2)),
+                      PBIAS = 100*sum(.data$obs - .data$sim)/sum(.data$obs)) %>%
+               ungroup() %>%
+               select(.data$lake, .data$RMSE, .data$R2, .data$PBIAS) %>%
+               unique()
+
+lake_res    <- lake_fluxes %>%
+               select(.data$date, .data$lake, .data$res_time) %>%
+               group_by(.data$lake) %>%
+               mutate(t_switch = min(.data$date[.data$res_time == min(.data$res_time)]),
+                      min_res_time = min(.data$res_time),
+                      max_res_time = max(.data$res_time)) %>%
+               ungroup() %>%
+               select(.data$lake, .data$max_res_time, .data$min_res_time, 
+                      .data$t_switch) %>%
+               unique()
+
+overall_res  <- calculate_water_balance(dt = "annual", 
+                                        start_date = as_datetime("2018-10-01"),
+                                        end_date = as_datetime("2019-09-30")) %>%
+                mutate(res_time = .data$res_time*365.25) %>%
+                select(.data$lake, .data$res_time)
+
+lake_res     <- merge(lake_res, overall_res, by = "lake")
+
+plot_obj <- ggplot(lake_fluxes) +
+            geom_line(aes(x = .data$date,
+                          y = .data$C_lake_calc),
+                      color = "grey70") +
+            geom_point(aes(x = .data$date,
+                           y = .data$C_lake_meas),
+                       color = "black") +
+            geom_text(data = lake_RMSE,
+                      aes(x = as_datetime("2018-11-01"),
+                          y = -1,
+                          label = sprintf("RMSE = %0.3f per mil\nR2 = %0.3f\nPBIAS = %0.2f%%",
+                                          .data$RMSE, .data$R2, .data$PBIAS)),
+                      family = "Segoe UI Semilight",
+                      size = 3,
+                      hjust = 0) +
+            geom_text(data = lake_res,
+                      aes(x = as_datetime("2018-11-01"),
+                          y = -3,
+                          label = sprintf("Before %s: %.0f days\nAfter %s: %.0f days\nOverall: %.0f days",
+                                          format(.data$t_switch, format = "%b %d"),
+                                          .data$max_res_time,
+                                          format(.data$t_switch, format = "%b %d"),
+                                          .data$min_res_time,
+                                          .data$res_time)),
+                      family = "Segoe UI Semilight",
+                      size = 3,
+                      hjust = 0) +
+            scale_x_datetime(date_breaks = "4 months",
+                             date_minor_breaks = "1 month",
+                             date_labels = "%b '%y",
+                             expand = c(1/60,0)) +
+            scale_y_continuous(limits = c(-7,0),
+                               expand = c(0,0)) +
+            coord_cartesian(clip = "off") +
+            facet_grid(~lake) +
+            labs(x = "", y = "Lake Concentration (per mil)") +
+            theme_bw() + 
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size))
+            
+plot_obj
+```
+
+```{r transition, echo=FALSE, warning=FALSE, message=FALSE, fig.width=4.5, fig.height=3}
+gw_levels <- CSLSdata::gw_levels %>%
+               filter(.data$site_id != "PSNT-11")
+colnames(gw_levels)[colnames(gw_levels) == "window_diff_m"] <- "dh_m"
+K_dx      <- CSLSchem::K_dx
+df        <- merge(gw_levels, K_dx, by = "site_id")
+df$Q_ft_d <- df$K_ft_d*NISTmeterTOft(df$dh_m)/df$dx_ft
+df$time_d <- df$dx_ft/df$Q_ft_d
+Q         <- df %>% 
+             filter(.data$date >= as_datetime("2018-10-01"),
+                    .data$date <= as_datetime("2019-09-30")) %>%
+             group_by(.data$lake, .data$date) %>% 
+             summarise(Qin = mean(.data$Q_ft_d, na.rm = TRUE)) %>% ungroup()
+switch_dates <- lake_res %>% 
+                select(lake = .data$lake,
+                       date = .data$t_switch)
+Q_points  <- inner_join(Q, switch_dates, by = c("lake", "date"))
+
+plot_obj <- ggplot(Q) + 
+            geom_line(aes(x = .data$date, 
+                          y = .data$Qin, 
+                          color = .data$lake)) + 
+            geom_point(data = Q_points,
+                       aes(x = .data$date,
+                           y = .data$Qin,
+                           color = .data$lake)) +
+            labs(x = "", y = "Mean Flux from Wells (ft/d)", color = "") +
+            scale_x_datetime(date_breaks = "4 months",
+                             date_minor_breaks = "1 month",
+                             date_labels = "%b '%y",
+                             expand = c(1/60,0)) +
+            theme_bw() + 
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size),
+                  legend.position = "top")
+plot_obj
+```
+
+# Annual water balance
+
+```{r annual_balance, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=2.5}
+annual_balance <- calculate_water_balance(start_date = as_datetime("2018-10-01"),
+                                          end_date = as_datetime("2019-09-30"),
+                                          dt = "annual")
+p1 <- plot_water_bal(annual_balance, annual = TRUE)
+p2 <- plot_water_bal(annual_balance, annual = TRUE, as_pcnt = TRUE)
+combined <- p1 + p2 & theme(legend.position = "top")
+combined + 
+  plot_layout(guides = "collect") +  
+  plot_annotation(tag_levels = 'a') &
+  theme(plot.tag = element_text(family = "Segoe UI Semibold",
+                                size = text_size),
+        legend.position = "top",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(0,0,0,0),
+        plot.margin = margin(0,0.15,0,0, unit = "in"),
+        plot.tag.position = c(0.1, 0.75))
+
+```
+
+```{r table_compare1, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+annual_balance1 <- annual_balance %>% 
+                   mutate(GWin_Mgal = NISTunits::NISTcubMeterTOgallon(.data$GWin_m3)*1e-6,
+                          GWin_pct = round(100*.data$GWin_pct,0),
+                          res_time = .data$res_time*365.25) %>%
+                   select(.data$lake, .data$GWin_Mgal, .data$GWin_pct, .data$res_time)
+
+annual_balance2 <- calculate_water_balance(start_date = as_datetime("2018-10-01"),
+                                          end_date = as_datetime("2019-09-30"),
+                                          dt = "annual",
+                                          method = "direct") %>% 
+                   mutate(GWin_Mgal = NISTunits::NISTcubMeterTOgallon(.data$GWin_m3)*1e-6,
+                          GWin_pct = round(100*.data$GWin_pct,0),
+                          res_time = .data$res_time*365.25) %>%
+                   select(.data$lake, .data$GWin_Mgal, .data$GWin_pct, .data$res_time)
+
+annual_balance_merge <- merge(annual_balance1, annual_balance2, by = "lake") 
+
+
+```
+
+```{r table_compare2, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+monthly_balance1 <- calculate_water_balance(start_date = as_datetime("2018-10-01"),
+                                          end_date = as_datetime("2019-09-30"),
+                                          dt = "month") %>% 
+                   mutate(GWin_Mgal = NISTunits::NISTcubMeterTOgallon(.data$GWin_m3)*1e-6) %>%
+                   select(.data$lake, .data$date, .data$GWin_Mgal)
+monthly_balance2 <- calculate_water_balance(start_date = as_datetime("2018-10-01"),
+                                          end_date = as_datetime("2019-09-30"),
+                                          dt = "month",
+                                          method = "direct")  %>% 
+                   mutate(GWin_Mgal = NISTunits::NISTcubMeterTOgallon(.data$GWin_m3)*1e-6) %>%
+                   select(.data$lake, .data$date, .data$GWin_Mgal)
+
+monthly_balance <- merge(monthly_balance1, monthly_balance2, by = c("lake", "date")) %>%
+                   filter(month(.data$date) %in% c(6, 9))
+
+```
+
+# Timeseries of groundwater inflow
+
+```{r monthly_gw, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=4.5}
+monthly_balance <- calculate_water_balance(start_date = as_datetime("2018-10-01"),
+                                          end_date = as_datetime("2019-09-30"),
+                                          dt = "month")
+p1 <- plot_water_bal(filter(monthly_balance, lake == "Pleasant"), 
+                     gw_only = TRUE) + 
+      labs(y = "", title = "a") +
+      theme(axis.title.x=element_blank(),
+            axis.text.x=element_blank(),
+            axis.ticks.x=element_blank())
+p2 <- plot_water_bal(filter(monthly_balance, lake == "Long"), 
+                     gw_only = TRUE) + 
+      labs(title = "b") +
+      theme(axis.title.x=element_blank(),
+            axis.text.x=element_blank(),
+            axis.ticks.x=element_blank())
+p3 <- plot_water_bal(filter(monthly_balance, lake == "Plainfield"),
+                     gw_only = TRUE) +
+      labs(y = "", title = "c")
+
+combined <- p1 + p2 + p3 + 
+  plot_layout(guides = "collect",
+              ncol = 1) &  
+  theme(legend.position = "top",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(0,0,0,0),
+        plot.margin = margin(0,0.15,0,0, unit = "in"),
+        plot.tag.position = c(0.1, 0.75),
+        plot.title = element_text(family = "Segoe UI Semibold",
+                                  hjust = 0, size = text_size))
+combined
+```
+
+

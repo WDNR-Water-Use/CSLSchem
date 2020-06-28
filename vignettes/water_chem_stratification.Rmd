@@ -19,6 +19,7 @@ library(patchwork)
 library(NISTunits)
 library(lubridate)
 library(stringr)
+library(patchwork)
 
 text_size    <- 12
 lakes        <- c("Pleasant", "Long", "Plainfield")
@@ -248,7 +249,7 @@ plot_obj
 
 ## Pleasant Lake Internal Nutrient Loading
 
-```{r nutrients, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=3.25, fig.height=5, fig.align="center"}
+```{r nutrients, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=4.5, fig.height=5, fig.align="center"}
 
 lake <- "Pleasant"
 
@@ -300,20 +301,21 @@ deep_DO <- merge(deep_DO, deep_chem_day_depths, by = c("date", "depth1_m"))
 # Chem and DO at lake surface
 shallow_chem <- water_chem %>%
                 filter(.data$lake == !!lake,
-                   .data$site_type == "lake",
-                   .data$description %in% c("MANGANESE, TOTAL RECOVERABLE",
-                                            "IRON TOTAL RECOVERABLE",
-                                            "SULFATE TOTAL",
-                                            "SULFATE DISS, AS SO4",
-                                            "PHOSPHORUS TOTAL",
-                                            "DISSOLVED OXYGEN FIELD"),
-                   .data$depth1_m == 0) %>%
+                       .data$site_type == "lake",
+                       .data$description %in% c("MANGANESE, TOTAL RECOVERABLE",
+                                                "IRON TOTAL RECOVERABLE",
+                                                "SULFATE TOTAL",
+                                                "SULFATE DISS, AS SO4",
+                                                "PHOSPHORUS TOTAL",
+                                                "DISSOLVED OXYGEN FIELD"),
+                       .data$depth1_m == 0) %>%
                 mutate(date = floor_date(.data$date, unit = "day"),
                        depth = "Surface") %>%
+                filter(.data$date %in% deep_chem_days) %>%
                 select(.data$date, .data$description, .data$result,
                               .data$depth)
 
-all_chem <- bind_rows(deep_chem, shallow_chem, deep_DO)
+all_chem      <- bind_rows(deep_chem, shallow_chem, deep_DO)
 all_chem$name <- as.character(all_chem$description)
 for (p in 1:nrow(plot_names)) {
   all_chem$name <- str_replace_all(all_chem$name,
@@ -322,39 +324,183 @@ for (p in 1:nrow(plot_names)) {
 }
 
 all_chem <- all_chem %>% 
-            mutate(result = ifelse(.data$description == "PHOSPHORUS TOTAL",
+            mutate(year = year(.data$date),
+                   day = yday(.data$date),
+                   result = ifelse(.data$description == "PHOSPHORUS TOTAL",
                                    as.numeric(.data$result)*1000, 
-                                   as.numeric(.data$result)))
+                                   as.numeric(.data$result))) %>%
+            filter(.data$day > yday(as_datetime("2018-07-15")),
+                   .data$day < yday(as_datetime("2018-09-15")))
+limits <- data.frame(name = c("Mn (ug/L)",
+                              "Fe (mg/L)",
+                              "SO4 (mg/L)",
+                              "P (ug/L)",
+                              "DO (mg/L)",
+                              "Mn (ug/L)",
+                              "Fe (mg/L)",
+                              "SO4 (mg/L)",
+                              "P (ug/L)",
+                              "DO (mg/L)"),
+                     lims = c(0, 0, 0, 0, 0, 
+                              15, 3, 10, 20, 15))
+
+# Chem at lake bottom
+HOBO_DO <- water_chem %>%
+           filter(.data$lake == !!lake,
+                  .data$site_type == "lake",
+                  .data$description %in% c("DISSOLVED OXYGEN HOBO"),
+                  .data$depth1_m > 3,
+                  yday(.data$date) > yday(as_datetime("2018-07-15")),
+                  yday(.data$date) < yday(as_datetime("2018-09-15"))) %>%
+           group_by(date = floor_date(.data$date, unit = "hour")) %>%
+           mutate(max_depth = max(.data$depth1_m),
+                  name = "DO (mg/L)") %>%
+           ungroup() %>%
+           filter(.data$depth1_m == .data$max_depth)
 
 
 # Plot
-plot_obj <- ggplot(all_chem) +
-            geom_point(aes(x = .data$date, 
+plot_obj <- ggplot() +
+            geom_blank(data = limits,
+                       aes(x = as.Date(median(all_chem$day), origin = as.Date("2018-01-01")),
+                           y = .data$lims)) +
+            geom_line(data = HOBO_DO,
+                       aes(x = as.Date(.data$date),
+                           y = as.numeric(.data$result),
+                           color = "2018_Bottom")) +
+            geom_line(data = HOBO_DO,
+                       aes(x = as.Date(.data$date - years(1)),
+                           y = as.numeric(.data$result),
+                           color = "2019_Bottom"))  +
+            geom_point(data = all_chem,
+                       aes(x = as.Date(.data$day, origin = as.Date("2018-01-01")),
                            y = .data$result,
-                           color = .data$depth,
-                           shape = .data$depth),
+                           shape = sprintf("%d_%s", .data$year, .data$depth),
+                           color = sprintf("%d_%s", .data$year, .data$depth)),
                        size = 2) +
             facet_wrap(~name, 
                        ncol = 1,
                        strip.position = "left",
                        scales = "free_y") +
             labs(x = "", y = "") +
-            # scale_y_continuous(limits = c(0,max(all_chem$result))) +
-            scale_x_datetime(date_breaks = "3 months",
-                             date_minor_breaks = "1 month",
-                             date_labels = "%b %y") +
-            scale_color_manual(name = "",
-                               breaks = c("Surface", "Bottom"),
-                               values = c("#FB9A99", "#E31A1C")) +
+            # scale_y_continuous(limits = c(0,limits$max)) +
+            scale_x_date(breaks = c(as.Date("2018-07-15"),
+                                    as.Date("2018-08-05"),
+                                    as.Date("2018-08-26"),
+                                    as.Date("2018-09-16")),
+                         minor_breaks = c(as.Date("2018-07-15"),
+                                          as.Date("2018-07-22"),
+                                          as.Date("2018-07-29"),
+                                          as.Date("2018-08-05"),
+                                          as.Date("2018-08-12"),
+                                          as.Date("2018-08-19"),
+                                          as.Date("2018-08-26"),
+                                          as.Date("2018-09-02"),
+                                          as.Date("2018-09-09"),
+                                          as.Date("2018-09-16")),
+                         date_labels = "%b %d",
+                         limits = c(as.Date("2018-07-15"), as.Date("2018-09-16")),
+                         expand = c(0,0)) +
             scale_shape_manual(name = "",
-                               breaks = c("Surface", "Bottom"),
-                               values = c(16, 17)) +
+                               labels = c("2018 Surface", "2019 Surface",
+                                          "2018 Bottom", "2019 Bottom"),
+                               breaks = c("2018_Surface", "2019_Surface",
+                                          "2018_Bottom", "2019_Bottom"),
+                               values = c(16, 16, 17, 17)) +
+            scale_color_manual(name = "",
+                               labels = c("2018 Surface", "2019 Surface",
+                                          "2018 Bottom", "2019 Bottom"),
+                               breaks = c("2018_Surface", "2019_Surface",
+                                          "2018_Bottom", "2019_Bottom"),
+                               values = c("#A6CEE3", "#1F78B4",
+                                          "#FB9A99", "#E31A1C")) +
             theme_bw() +
             theme(text = element_text(family = "Segoe UI Semilight",
                                         size = text_size),
-                  legend.position = "top",
+                  legend.position = "right",
                   legend.margin = margin(0,0,0,0),
                   legend.box.margin = margin(0,0,0,0))
 
 plot_obj
+```
+
+```{r clarity, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=5, fig.align="center"}
+
+water_chem    <- CSLSdata::water_chem
+water_clarity <- water_chem %>%
+                 filter(.data$site_type == "lake",
+                        .data$description %in% c("SECCHI DEPTH - FEET",
+                                                 "SECCHI DEPTH HIT BOTTOM",
+                                                 "CHLOROPHYLL A, FLUORESCENCE (WELSCHMAYER 1994)"),
+                        yday(.data$date) > yday(as_datetime("2018-05-01")),
+                        yday(.data$date) < yday(as_datetime("2018-11-15")),
+                        .data$flag != "BAD_SAMPLE") %>%
+                 mutate(date = floor_date(.data$date, unit = "day"),
+                        result = ifelse(.data$result == "ND",
+                                        "0", .data$result)) %>%
+                 select(.data$lake, .data$date, .data$description, .data$result)
+
+depth  <- water_clarity %>% filter(.data$description == "SECCHI DEPTH - FEET")
+bottom <- water_clarity %>% filter(.data$description == "SECCHI DEPTH HIT BOTTOM")
+chla   <- water_clarity %>% filter(.data$description == "CHLOROPHYLL A, FLUORESCENCE (WELSCHMAYER 1994)")
+
+water_clarity <- full_join(depth, bottom, by = c("date", "lake")) %>%
+                 full_join(chla, by = c("date", "lake"))
+
+water_clarity$day  <- yday(water_clarity$date)
+water_clarity$year <- year(water_clarity$date)
+
+p1 <- ggplot(filter(water_clarity, !is.na(.data$description.y) & !is.na(.data$description.x))) +
+            geom_line(aes(x = as.Date(.data$day, origin = "2018-01-01"),
+                          y = as.numeric(.data$result.x),
+                          group = as.factor(.data$year),
+                          color = as.factor(.data$year))) +
+            geom_point(aes(x = as.Date(.data$day, origin = "2018-01-01"),
+                          y = as.numeric(.data$result.x),
+                          color = as.factor(.data$year),
+                          shape = .data$result.y),
+                       size = 2) +
+            facet_grid(~lake, scales = "free_y") +
+            scale_y_reverse(limits = c(30,0)) +
+            scale_x_date(date_breaks = "1 month",
+                         date_minor_breaks = "1 month",
+                         date_labels = "%b") +
+            scale_color_manual(name = "",
+                               values = c("#A6CEE3", "#1F78B4")) +
+            scale_shape_manual(name = "Secchi Hit Bottom?",
+                               breaks = c("YES","NO"),
+                               labels = c("Yes","No"),
+                               values = c(8, 16)) +
+            labs(y = "Secchi Depth (ft)",
+                 x = "") +
+            theme_bw() + 
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size),
+                  legend.position = "top")
+p2 <- ggplot(filter(water_clarity, !is.na(.data$description))) +
+            geom_blank(data = water_clarity,
+                       aes(x = as.Date(.data$day, origin = "2018-01-01"),
+                          y = as.numeric(.data$result.x))) +
+            geom_line(aes(x = as.Date(.data$day, origin = "2018-01-01"),
+                          y = as.numeric(.data$result),
+                          group = as.factor(.data$year),
+                          color = as.factor(.data$year))) +
+            geom_point(aes(x = as.Date(.data$day, origin = "2018-01-01"),
+                          y = as.numeric(.data$result),
+                          color = as.factor(.data$year)),
+                       size = 2) +
+            facet_grid(~lake, scales = "free_y") +
+            scale_x_date(date_breaks = "1 month",
+                         date_minor_breaks = "1 month",
+                         date_labels = "%b") +
+            scale_color_manual(name = "",
+                               values = c("#A6CEE3", "#1F78B4")) +
+            labs(y = "Chlorophyll A (ug/L)",
+                 x = "") +
+            theme_bw() + 
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size),
+                  legend.position = "top")
+p1 + p2 + plot_layout(ncol = 1, guides = "collect") & theme(legend.position = "top",
+                                                            legend.box = "horizontal")
 ```

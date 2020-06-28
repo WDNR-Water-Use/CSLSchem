@@ -5,63 +5,33 @@
 \title{Calculate water balance}
 \usage{
 calculate_water_balance(
-  desired_lakes = c("Pleasant", "Long", "Plainfield"),
-  chem_df = CSLSdata::water_chem,
-  chem_tracer = "d18O",
-  start_date = as_datetime(mdy("10-01-2018")),
-  end_date = as_datetime(mdy("09-30-2019")),
-  annual = FALSE,
-  no_ice = FALSE,
-  ice_on = "12-01-2018",
-  ice_off = "03-31-2019",
-  use_kniffin = TRUE,
-  seasonal_correction = TRUE
+  parameter = "d18O",
+  start_date = as_datetime("2018-08-22"),
+  end_date = as_datetime("2019-11-05"),
+  dt = "day",
+  method = "indirect_load"
 )
 }
 \arguments{
-\item{desired_lakes}{vector of lakes to analyze, defaults to
-c("Pleasant", "Long", "Plainfield")}
+\item{parameter}{parameter to use for water balance calculations, defaults to "d18O".}
 
-\item{chem_df}{data frame with water chemistry information for all sites.
-Defaults to CSLSdata::water_chem.}
+\item{start_date}{start date of calculations}
 
-\item{chem_tracer}{name of water chemistry parameter to use as a tracer.
-Must match the "description" field of CSLSdata::water_chem
-for the desired parameter. Defaults to "d18O". Options
-include "d18O", "d2H", "CALCIUM TOTAL RECOVERABLE",
-"MAGNESIUM TOTAL RECOVERABLE", "CHLORIDE", and
-"SODIUM TOTAL RECOVERABLE".}
+\item{end_date}{end date of calculations}
 
-\item{start_date}{start date of analysis. Defaults to start of WY2019
-("2018-10-01").}
+\item{dt}{desired final time step ("day", "month", or "annual")}
 
-\item{end_date}{end date of analysis. Defaults to end of WY2019
-("2019-09-30").}
-
-\item{annual}{logical defaults to FALSE to calculate water balance on a
-monthly time step. If TRUE, calculates for entire timeseries
-(start_date to end_date), assumed to be one year.}
-
-\item{no_ice}{logical defaults to FALSE. If TRUE, calculates water balance
-for ice-free months only.}
-
-\item{ice_on}{date of ice on, defaults to "12-01-2018"}
-
-\item{ice_off}{date of ice off, defaults to "03-31-2019"}
-
-\item{use_kniffin}{logical defaults to TRUE to add in Kniffin precipitation
-isotope samples for months without CSLS precipitation
-isotope samples}
-
-\item{seasonal_correction}{logical defaults to TRUE to incorporate seasonal
-correction factors for d18O_atm based on
-difference between calculated and reported
-d18O_atm values in Krabbenhoft et al. (1990).}
+\item{method}{approach for calculating water balance, either "direct",
+"indirect_calc", or "indirect_load". Defaults to
+"indirect_load".}
 }
 \value{
-fluxes
+lake_fluxes
 }
 \description{
-Calculates the water balance using desired tracer, e.g., stable isotopes or
-conservative anion/cation.
+Calculates the water balance using a stable isotope tracer using either a) a
+direct approach, where GWin is directly calculated from measured and
+interpolated values, or b) an indirect approach, where a dynamic lake model
+with a daily time step is set up and GW residence time is solved for using
+optimization.
 }

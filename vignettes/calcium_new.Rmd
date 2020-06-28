@@ -1,0 +1,184 @@
+---
+title: "CSLS Water Budget Approach"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{CSLS_water_budget_isotopes}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+# Libraries
+library(CSLSchem)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(extrafont)
+library(patchwork)
+library(NISTunits)
+library(reshape2)
+
+text_size <- 12
+```
+
+
+# Fit with dynamic lake model
+
+```{r fit, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=3}
+lake_Ca     <- calculate_solute_dynamics(start_date = as_datetime("2018-06-28"),
+                                         end_date = as_datetime("2019-11-15"),
+                                         parameter = "CALCIUM TOTAL RECOVERABLE")
+lake_RMSE   <- lake_Ca %>%
+               filter(!is.na(.data$C_lake_meas)) %>%
+               group_by(.data$lake) %>%
+               mutate(obs = .data$C_lake_meas,
+                      sim = .data$C_lake_calc,
+                      RMSE = sqrt(mean((.data$sim - .data$obs)^2)),
+                      R2 = summary(lm(.data$sim~.data$obs))$r.squared,
+                      PBIAS = 100*sum(.data$obs - .data$sim)/sum(.data$obs)) %>%
+               ungroup() %>%
+               select(.data$lake, .data$RMSE, .data$R2, .data$PBIAS) %>%
+               unique()
+
+lake_k0     <- lake_Ca %>%
+               select(.data$date, .data$lake, .data$k0) %>%
+               unique()
+
+plot_obj <- ggplot(lake_Ca) +
+            geom_line(aes(x = .data$date,
+                          y = .data$C_lake_calc),
+                      color = "grey70") +
+            geom_point(aes(x = .data$date,
+                           y = .data$C_lake_meas),
+                       color = "black") +
+            geom_text(data = lake_RMSE,
+                      aes(x = as_datetime("2018-08-01"),
+                          y = 55,
+                          label = sprintf("RMSE = %0.1f mg/L\nR2 = %0.2f\nPBIAS = %0.1f%%",
+                                          .data$RMSE, .data$R2, .data$PBIAS)),
+                      family = "Segoe UI Semilight",
+                      size = 3,
+                      hjust = 0) +
+            geom_text(data = lake_k0,
+                      aes(x = as_datetime("2018-08-01"),
+                          y = 44,
+                          label = sprintf("Reaction Rate: %0.2f g/m2-d", .data$k0)),
+                      family = "Segoe UI Semilight",
+                      size = 3,
+                      hjust = 0) +
+            scale_x_datetime(date_breaks = "6 months",
+                             date_minor_breaks = "1 month",
+                             date_labels = "%b '%y",
+                             expand = c(0,0)) +
+            scale_y_continuous(limits = c(0,65),
+                               expand = c(0,0)) +
+            coord_cartesian(clip = "off") +
+            facet_grid(~lake) +
+            labs(x = "", y = "Lake Calcium (mg/L)") +
+            theme_bw() + 
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size))
+            
+plot_obj
+```
+
+```{r table, echo=FALSE, warning=FALSE, message=FALSE}
+lake_Ca1 <- calculate_solute_dynamics(start_date = as_datetime("2018-10-01"),
+                                      end_date = as_datetime("2019-09-30"),
+                                      annual = TRUE,
+                                      parameter = "CALCIUM TOTAL RECOVERABLE") %>%
+            mutate(Uptake = .data$Uptake/1000) %>%
+            select(lake = .data$lake,
+                   dynamic = .data$Uptake)
+lake_Ca2 <- calculate_solute_balance(parameters = "CALCIUM TOTAL RECOVERABLE") %>%
+            filter(.data$site_type == "Up") %>%
+            select(.data$lake, .data$site_type, .data$mass_kg)
+lake_Ca2 <- dcast(lake_Ca2, lake~site_type, value.var = "mass_kg") %>%
+            select(lake = .data$lake,
+                   solute = .data$Up)
+
+lake_Ca3 <- data.frame(lake = c("Pleasant", "Long", "Plainfield"),
+                       FOO = c(0.34, 0.36, 0.61))
+lake_area <- calculate_water_balance(start_date = as_datetime("2018-10-01"),
+                                     end_date = as_datetime("2019-09-30"),
+                                     dt = "annual") %>%
+             select(.data$lake, .data$area_m2)
+lake_Ca3 <- inner_join(lake_Ca3, lake_area, by = "lake")
+lake_Ca3$Ca_kg_low <- 400*(40/100.0869)*lake_Ca3$FOO*lake_Ca3$area_m2/1000
+lake_Ca3$Ca_kg_high <- 1100*(40/100.0869)*lake_Ca3$FOO*lake_Ca3$area_m2/1000
+
+
+lake_Ca <- inner_join(lake_Ca1, lake_Ca2, by = "lake") %>%
+           inner_join(lake_Ca3, by = "lake")
+
+```
+
+```{r fit_TP, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6.5, fig.height=3}
+lake_TP     <- calculate_solute_dynamics(start_date = as_datetime("2018-05-01"),
+                                         end_date = as_datetime("2019-11-15"),
+                                         parameter = "PHOSPHORUS TOTAL")
+lake_RMSE   <- lake_TP %>%
+               filter(!is.na(.data$C_lake_meas)) %>%
+               group_by(.data$lake) %>%
+               mutate(obs = .data$C_lake_meas,
+                      sim = .data$C_lake_calc,
+                      RMSE = sqrt(mean((.data$sim - .data$obs)^2)),
+                      R2 = summary(lm(.data$sim~.data$obs))$r.squared,
+                      PBIAS = 100*sum(.data$obs - .data$sim)/sum(.data$obs)) %>%
+               ungroup() %>%
+               select(.data$lake, .data$RMSE, .data$R2, .data$PBIAS) %>%
+               unique()
+
+lake_params <- lake_TP %>%
+               filter(.data$date == min(.data$date)) %>%
+               select(.data$lake, .data$P_sed, .data$ks, .data$ks_tmp,
+                      .data$kr, .data$kr_tmp)
+
+plot_obj <- ggplot(lake_TP) +
+            geom_line(aes(x = .data$date,
+                          y = .data$C_lake_calc),
+                      color = "grey70") +
+            geom_point(aes(x = .data$date,
+                           y = .data$C_lake_meas),
+                       color = "black") +
+            geom_text(data = lake_RMSE,
+                      aes(x = as_datetime("2018-08-01"),
+                          y = 0.048,
+                          label = sprintf("RMSE = %0.3f mg/L\nR2 = %0.2f\nPBIAS = %0.1f%%",
+                                          .data$RMSE, .data$R2, .data$PBIAS)),
+                      family = "Segoe UI Semilight",
+                      size = 3,
+                      hjust = 0) +
+            geom_text(data = lake_params,
+                      aes(x = as_datetime("2018-08-01"),
+                          y = 0.033,
+                          label = sprintf("Initial P_sed: %0.2f g/m2\nsed: %0.3f g/m2-d  temp. adj: %0.3f\nrel: %0.4f g/d  temp. adj.: %0.3f", .data$P_sed, .data$ks, .data$ks_tmp, .data$kr, .data$kr_tmp)),
+                      family = "Segoe UI Semilight",
+                      size = 3,
+                      hjust = 0) +
+            scale_x_datetime(date_breaks = "6 months",
+                             date_minor_breaks = "1 month",
+                             date_labels = "%b '%y",
+                             expand = c(0,0)) +
+            # scale_y_continuous(limits = c(0,65),
+            #                    expand = c(0,0)) +
+            coord_cartesian(clip = "off") +
+            facet_grid(~lake) +
+            labs(x = "", y = "Lake Phosphorus (mg/L)") +
+            theme_bw() + 
+            theme(text = element_text(family = "Segoe UI Semilight",
+                                        size = text_size))
+            
+plot_obj
+```
+
+```{r table_TP, echo=FALSE, warning=FALSE, message=FALSE}
+lake_TP <- calculate_solute_dynamics(start_date = as_datetime("2018-10-01"),
+                                     end_date = as_datetime("2019-09-30"),
+                                     annual = TRUE,
+                                     parameter = "PHOSPHORUS TOTAL")
+
+```
+
